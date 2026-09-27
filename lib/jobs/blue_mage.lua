@@ -1,7 +1,8 @@
 --[[
     Blue Mage job definition
     Support automation for Blue Mage:
-    - Healing: Pollen (self only), Wild Carrot / Magic Fruit (party only --
+    - Healing: Pollen (self only), Wild Carrot / Magic Fruit / Plenilune
+      Embrace (party only --
       blue magic cures cannot target outside the party, so no target_outside)
     - AOE healing: Healing Breeze
     - Self buffs (blue magic), all self-target
@@ -40,6 +41,19 @@ return {
     abilities = {
         -- Single-target healing
         heal = {
+            {
+                name = 'Plenilune Embrace',
+                level = 75,
+                cost = 106,
+                spell_id = 658,
+                magic = 'blue',
+                command = function(target)
+                    return '/ma "Plenilune Embrace" '..target
+                end,
+                range = 20,
+                value = 650,
+                wakes = true,
+            },
             {
                 name = 'Magic Fruit',
                 level = 58,
@@ -267,7 +281,7 @@ return {
                 spell_id = 685,
                 magic = 'blue',
                 command = '/ma "Barrier Tusk" <me>',
-                buff_id = 116,
+                buff_id = 150,
             },
             -- Unbridled Learning spells. Only Harden Shell, Pyric Bulwark, and
             -- Carcharian Verve are still locked behind the Unbridled Learning
