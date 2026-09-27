@@ -281,7 +281,7 @@ return {
                 spell_id = 685,
                 magic = 'blue',
                 command = '/ma "Barrier Tusk" <me>',
-                buff_id = 116,
+                buff_id = 150,
             },
             -- Unbridled Learning spells. Only Harden Shell, Pyric Bulwark, and
             -- Carcharian Verve are still locked behind the Unbridled Learning
