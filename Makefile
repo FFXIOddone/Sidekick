@@ -11,4 +11,4 @@ check: lint test
 
 # Regenerate tests/data/*.lua from a CatsEyeXI checkout: make resources CATSEYE=../catseyexi
 resources:
-	luajit tools/gen_resources.lua $(CATSEYE) $(shell git -C $(CATSEYE) rev-parse --short=12 HEAD)
+	luajit tools/gen_resources.lua "$(CATSEYE)"

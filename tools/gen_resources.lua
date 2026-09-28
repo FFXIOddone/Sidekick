@@ -1,15 +1,22 @@
 -- Regenerates tests/data/*.lua from a CatsEyeXI server checkout. From the repo root:
---   luajit tools/gen_resources.lua <path-to-catseyexi> [commit]
+--   luajit tools/gen_resources.lua <path-to-catseyexi>
 -- Reads sql/spell_list.sql, sql/abilities.sql and sql/status_effects.sql and writes the
--- three lookup tables the data-table tests check job files against. The optional commit
--- is recorded in each file's header so a reader knows which server revision it mirrors.
+-- three lookup tables the data-table tests check job files against. The checkout's HEAD
+-- commit is recorded in each file's header so a reader knows which server revision it mirrors.
 local root = arg[1];
 if root == nil then
-    io.stderr:write('usage: luajit tools/gen_resources.lua <path-to-catseyexi> [commit]\n');
+    io.stderr:write('usage: luajit tools/gen_resources.lua <path-to-catseyexi>\n');
     os.exit(2);
 end
 root = root:gsub('[/\\]+$', '');
-local commit = arg[2] or 'unknown';
+-- Read from the checkout itself so the header cannot disagree with the SQL it was made from.
+local git = io.popen(('git -C "%s" rev-parse --short=12 HEAD'):format(root));
+local commit = git:read('*l');
+git:close();
+if commit == nil or commit == '' then
+    io.stderr:write(root .. ' is not a git checkout\n');
+    os.exit(2);
+end
 
 -- Splits one "INSERT INTO `t` VALUES (...)" line into its values: quoted strings unquoted,
 -- numbers as numbers, everything else (NULL, hex blobs, @ELEMENT_* names) as raw text.
