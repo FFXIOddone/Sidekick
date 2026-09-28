@@ -318,6 +318,8 @@ Currently implemented support jobs:
 - `/sidekick toggle` or `/sk toggle` - Toggle automation on/off
 - `/sidekick config` or `/sk config` - Show/hide configuration UI
 - `/sidekick widget` or `/sk widget` - Show/hide the floating widget (profile/job line, Start/Stop, status and Track Target, pulled out of the config window)
+- `/sidekick profile` or `/sk profile` - List the settings profiles saved for the current job/subjob combo
+- `/sidekick profile <name>` - Load a settings profile by name (case-insensitive; `default` returns to the working copy)
 - `/sidekick focus <index>` - Set focus target (0-5, party member index)
 - `/sidekick focus clear` - Clear focus target
 - `/sidekick debug` or `/sk debug` - Toggle debug mode

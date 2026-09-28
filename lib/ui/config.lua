@@ -511,6 +511,20 @@ function profile_ops.save_as(ctx, name)
     if ctx.save_callback then ctx.save_callback() end
 end
 
+-- Case-insensitive lookup of a named profile for the current combo, for the
+-- /sidekick profile command (chat input is not case-exact). Returns the stored
+-- name, or nil. Never matches the parked Default slot.
+function profile_ops.find(ctx, name)
+    if not name or name == '' then return nil end
+    local wanted = name:lower()
+    for stored in pairs(profile_list(ctx.settings)) do
+        if stored ~= DEFAULT_SLOT and stored:lower() == wanted then
+            return stored
+        end
+    end
+    return nil
+end
+
 function profile_ops.load(ctx, name)
     local list = profile_list(ctx.settings)
     local snap = list[name]
@@ -572,6 +586,10 @@ function profile_ops.delete(ctx, name)
     end
     if ctx.save_callback then ctx.save_callback() end
 end
+
+-- Exposed for the /sidekick profile command (Sidekick.lua), which builds the
+-- same ctx the popup uses and calls list / find / load / load_default directly.
+ui_config.profile_ops = profile_ops
 
 -- Profile + job line and the Start/Stop button + status line. Shared by the
 -- config window and the floating widget (/sk widget); the widget takes them
