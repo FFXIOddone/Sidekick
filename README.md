@@ -82,8 +82,8 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 - **Config window opens in front**: `/sk` now brings the config window above other addons' windows instead of opening it buried under them. — **Crobat**
 - **Enchanting Etude added**: the level-22 +CHR song was missing from the Bard song list. — **Draugr**
 - **BT unreliable in Alliance**: When the target changes from Red to Purple BT was lost.  Now falls back to one of the other groups BT when in an alliance. — **Tai**
-- **Barrier Tusk stops recasting itself**: it now watches for Physical Shield instead of Phalanx, so it is only cast once it wears off. — **Camuel** & **Stieg**
-- **Charmed members are left alone**: while someone is Charmed they are skipped for heals, buffs, cleanses and AOE counts, instead of wasting casts that can't land. — **Yumia**
+- **Barrier Tusk stops recasting itself**: it now watches for Physical Shield instead of Phalanx, so it is only cast once it wears off. — **Camuel**, **Stieg**
+- **Charmed members are left alone**: while someone is Charmed they are skipped for heals, buffs, cleanses, wakes and AOE counts, instead of wasting casts that can't land. — **Yumia**
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 

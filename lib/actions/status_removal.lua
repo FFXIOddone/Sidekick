@@ -559,7 +559,8 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
     for i = 1, 5 do
         if not is_wake_allowed(i) then goto continue_wake end
         local member_state = state.party[i]
-        if not member_state then goto continue_wake end
+        -- A charmed member is usually slept on purpose; waking them is hostile and can't land.
+        if not member_state or state.charmed[member_state.target_index] then goto continue_wake end
         local buffs = member_state.buffs or {}
         if status_removal.is_buff_sleep(buffs) then
             table.insert(sleeping_members, i)
@@ -628,7 +629,7 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
             for _, idx in ipairs(targeted and order or { 0 }) do
                 local m = idx > 0 and state.party[idx]
                 if idx == 0 or (m and m.target_index and m.target_index > 0
-                    and common.can_be_helped(m.target_index, type(ability.range) == 'number' and ability.range or 21)) then
+                    and common.can_be_helped(m.target_index, ability.range)) then
                     local desc = targeted
                         and string.format('Waking %d sleeping members with %s on %s', #sleeping_members, ability.name, m.name or 'party member')
                         or string.format('Waking %d sleeping members with %s', #sleeping_members, ability.name)

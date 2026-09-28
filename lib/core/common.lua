@@ -1357,21 +1357,15 @@ function common.is_trust_excluded(name, server_id)
     return server_id ~= nil and server_id >= 0x1000000
 end
 
--- Whether the player can help target_index right now: within range yalms
--- (default 21) and not charmed.
-function common.can_be_helped(target_index, range)
+-- Whether target_index is within range yalms (default 21) of the player.
+-- Distance only -- use can_be_helped for anyone you mean to heal, buff or cleanse.
+function common.is_in_range(target_index, range)
     -- Ensure range is a number
     local range_value = type(range) == 'number' and range or 21
-    
+
     -- Get both entities
     local player_entity = targets.get_me()
     if not player_entity then
-        return false
-    end
-    
-    -- A charmed member counts as unreachable so every heal, buff,
-    -- cleanse and AOE-count check skips them without touching each call site.
-    if common.game_state.charmed[target_index] then
         return false
     end
 
@@ -1383,6 +1377,12 @@ function common.can_be_helped(target_index, range)
     -- Calculate distance between player and target
     local distance = common.calculate_distance(player_entity, target_entity)
     return distance and distance <= range_value
+end
+
+-- Whether the player can help target_index right now: in range and not charmed.
+-- A charmed member is hostile to us, so every heal, buff, cleanse and revive skips them.
+function common.can_be_helped(target_index, range)
+    return not common.game_state.charmed[target_index] and common.is_in_range(target_index, range)
 end
 
 -- AOE radius (yalms). -ga/-ra, area songs, Phantom Rolls and Accession/Diffusion
@@ -1399,6 +1399,7 @@ common.AOE_RADIUS = 10
 --     not cause an indefinite hold.
 --   Dead members skipped (hpp == 0) -- a corpse can't receive the buff and should
 --     not force a wait. Full-HP members still count: HP is irrelevant to buffs.
+--   Charmed members skipped -- same reason: hostile to us, the buff can't land.
 --   No qualifying members (solo / everyone elsewhere) -> true -> cast normally.
 --   exclude: optional {[idx]=true} set of party indices to skip (BRD single-target).
 function common.group_in_aoe_range(radius, exclude)
@@ -1409,12 +1410,13 @@ function common.group_in_aoe_range(radius, exclude)
         if not (exclude and exclude[i]) then
             local m = state.party[i]
             if m and not m.is_trust and m.hpp and m.hpp > 0
+               and not state.charmed[m.target_index]
                and common.get_party_member_zone(i) == pz then
                 -- Unresolved entity (nil / <=0) = member not loaded, so out of
                 -- AOE range: fail closed to keep the hold guarantee.
                 local ei = m.target_index
                 if type(ei) ~= 'number' or ei <= 0
-                   or not common.can_be_helped(ei, radius) then
+                   or not common.is_in_range(ei, radius) then
                     return false
                 end
             end
@@ -2477,6 +2479,9 @@ function common.is_incapacitated()
     return require('lib.core.action_core').has_any_buff(
         common.get_player_buffs(), common.INCAPACITATING_STATUS)
 end
+
+-- Charm 14 / Charm II 17: a member carrying either is hostile to us (game_state.charmed).
+common.CHARM_STATUS = { 14, 17 }
 
 -- Check if player has Amnesia (blocks Job Abilities)
 -- Returns: boolean
@@ -3920,11 +3925,13 @@ function common.refresh_game_state()
     end
 
     -- Charmed members (Charm 14 / 17) are hostile to us and cannot be helped:
-    -- index them by target_index so can_be_helped rejects them.
+    -- index them by target_index so can_be_helped rejects them. A corpse is never
+    -- charmed -- a packet-tracked Charm with no wear-off must not block the Raise.
+    local has_any_buff = require('lib.core.action_core').has_any_buff
     local function mark_charmed(m)
-        if not (m and m.target_index and m.target_index > 0 and m.buffs) then return end
-        for _, bid in ipairs(m.buffs) do
-            if bid == 14 or bid == 17 then state.charmed[m.target_index] = true return end
+        if m and (m.target_index or 0) > 0 and m.entity_status ~= 3
+           and has_any_buff(m.buffs, common.CHARM_STATUS) then
+            state.charmed[m.target_index] = true
         end
     end
     for i = 1, 5 do mark_charmed(state.party[i]) end
