@@ -57,7 +57,7 @@ function revive.execute(settings, job_def, main_level, sub_level, player_resourc
             return nil
         end
         for _, ability in ipairs(buff_usable) do
-            if common.is_in_range(m.target_index, ability.range or 20) then
+            if common.can_be_helped(m.target_index, ability.range or 20) then
                 -- Check stratagems before casting (e.g. Scholar Penury to halve Raise MP)
                 local strat_result = common.check_stratagem(job_def, settings, ability.name, ability)
                 if strat_result == false then
@@ -97,7 +97,7 @@ function revive.execute(settings, job_def, main_level, sub_level, player_resourc
             return nil
         end
         for _, ability in ipairs(buff_usable) do
-            if common.is_in_range(m.target_index, ability.range or 20) then
+            if common.can_be_helped(m.target_index, ability.range or 20) then
                 -- Check stratagems before casting (e.g. Scholar Penury to halve Raise MP)
                 local strat_result = common.check_stratagem(job_def, settings, ability.name, ability)
                 if strat_result == false then

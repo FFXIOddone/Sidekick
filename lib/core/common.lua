@@ -956,10 +956,15 @@ common.DEBUFF_NAMES = {
 -- Slow), and the until-removed group (Disease/Curse/Bane/Plague -> INFINITE, which
 -- also overrides the 120s default back to no-timer). Erasable 120s debuffs
 -- (Poison/Paralyze/Blind/Silence/Dia/Bio) fall through to that default. Debuffs
--- nothing strips (Amnesia/Charm/Terror) are intentionally absent -- timing
--- them out buys nothing.
+-- nothing strips (Amnesia/Terror) are intentionally absent -- timing them out
+-- buys nothing. Charm is the exception: nothing strips it, but it makes
+-- can_be_helped skip the member, so a missed wear-off would leave them unhelped
+-- for the 300s unknown-status fallback. A charm that outlasts the 60s costs only
+-- the casts it wastes until it wears off.
 local INFINITE = false  -- tracked but never timer-expired
 local BASE_DEBUFF_DURATION = {
+    [14] = 60,        -- Charm       (none; backstop for game_state.charmed)
+    [17] = 60,        -- Charm II    (none; backstop for game_state.charmed)
     [2]  = 90,        -- Sleep       (Cure/wake; not erasable)
     [19] = 90,        -- Sleep II    (Cure/wake; not erasable)
     [7]  = 60,        -- Petrification (Stona; not erasable)
@@ -1357,16 +1362,18 @@ function common.is_trust_excluded(name, server_id)
     return server_id ~= nil and server_id >= 0x1000000
 end
 
+-- Whether target_index is within range yalms (default 21) of the player.
+-- Distance only -- use can_be_helped for anyone you mean to heal, buff or cleanse.
 function common.is_in_range(target_index, range)
     -- Ensure range is a number
     local range_value = type(range) == 'number' and range or 21
-    
+
     -- Get both entities
     local player_entity = targets.get_me()
     if not player_entity then
         return false
     end
-    
+
     local target_entity = GetEntity(target_index)
     if not target_entity then
         return false
@@ -1375,6 +1382,12 @@ function common.is_in_range(target_index, range)
     -- Calculate distance between player and target
     local distance = common.calculate_distance(player_entity, target_entity)
     return distance and distance <= range_value
+end
+
+-- Whether the player can help target_index right now: in range and not charmed.
+-- A charmed member is hostile to us, so every heal, buff, cleanse and revive skips them.
+function common.can_be_helped(target_index, range)
+    return not common.game_state.charmed[target_index] and common.is_in_range(target_index, range)
 end
 
 -- AOE radius (yalms). -ga/-ra, area songs, Phantom Rolls and Accession/Diffusion
@@ -1391,6 +1404,7 @@ common.AOE_RADIUS = 10
 --     not cause an indefinite hold.
 --   Dead members skipped (hpp == 0) -- a corpse can't receive the buff and should
 --     not force a wait. Full-HP members still count: HP is irrelevant to buffs.
+--   Charmed members skipped -- same reason: hostile to us, the buff can't land.
 --   No qualifying members (solo / everyone elsewhere) -> true -> cast normally.
 --   exclude: optional {[idx]=true} set of party indices to skip (BRD single-target).
 function common.group_in_aoe_range(radius, exclude)
@@ -1401,6 +1415,7 @@ function common.group_in_aoe_range(radius, exclude)
         if not (exclude and exclude[i]) then
             local m = state.party[i]
             if m and not m.is_trust and m.hpp and m.hpp > 0
+               and not state.charmed[m.target_index]
                and common.get_party_member_zone(i) == pz then
                 -- Unresolved entity (nil / <=0) = member not loaded, so out of
                 -- AOE range: fail closed to keep the hold guarantee.
@@ -2470,6 +2485,9 @@ function common.is_incapacitated()
         common.get_player_buffs(), common.INCAPACITATING_STATUS)
 end
 
+-- Charm 14 / Charm II 17: a member carrying either is hostile to us (game_state.charmed).
+common.CHARM_STATUS = { 14, 17 }
+
 -- Check if player has Amnesia (blocks Job Abilities)
 -- Returns: boolean
 function common.has_amnesia()
@@ -3438,6 +3456,7 @@ common.game_state = {
     alliance_size    = 0,                -- alliance sub-parties only (6-17)
     alliance_leaders = { [1] = 0, [2] = 0, [3] = 0 },
     tracked          = {},               -- keyed by server_id
+    charmed          = {},               -- target_index -> true while Charm 14/17 is up
     stratagems       = 0,                -- Scholar stratagem charges (0 when not SCH)
     ready_charges    = 0,                -- Beastmaster Ready charges (0 when not BST)
     pet_debuffs      = {},               -- pet's tracked statuses (buffs+debuffs); consumer filters by debuff_id
@@ -3674,6 +3693,7 @@ function common.refresh_game_state()
     state.alliance_size    = 0
     state.alliance_leaders = { [1] = 0, [2] = 0, [3] = 0 }
     state.tracked          = {}
+    state.charmed          = {}
     state.stratagems       = calculate_stratagems()
     state.ready_charges    = calculate_ready()
 
@@ -3908,6 +3928,22 @@ function common.refresh_game_state()
             }
         end
     end
+
+    -- Charmed members (Charm 14 / 17) are hostile to us and cannot be helped:
+    -- index them by target_index so can_be_helped rejects them. A corpse is never
+    -- charmed -- a packet-tracked Charm with no wear-off must not block the Raise.
+    local has_any_buff = require('lib.core.action_core').has_any_buff
+    local function mark_charmed(m)
+        if m and (m.target_index or 0) > 0 and m.entity_status ~= 3
+           and has_any_buff(m.buffs, common.CHARM_STATUS) then
+            state.charmed[m.target_index] = true
+        end
+    end
+    for i = 1, 5 do mark_charmed(state.party[i]) end
+    for al_pi = 2, 3 do
+        for _, m in pairs(state.alliance[al_pi]) do mark_charmed(m) end
+    end
+    for _, tt in pairs(state.tracked) do mark_charmed(tt) end
 
     -- Clear pending_raise flags for any server_id whose entity is no longer dead.
     -- Iterating a sparse table while modifying it is safe in Lua (next-based iteration).

@@ -66,7 +66,7 @@ function recover.execute(settings, job_def)
                     if ability.name == 'Devotion' then
                         local ok, reason    = action_core.is_usable(ability, job_def)
                         local entity_index  = tm.target_index
-                        local in_range      = entity_index and common.is_in_range(entity_index, 20)
+                        local in_range      = entity_index and common.can_be_helped(entity_index, 20)
                         if ok and in_range then
                             local cmd = common.build_ability_command(ability, tidx)
                             if cmd then
