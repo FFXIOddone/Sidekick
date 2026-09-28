@@ -614,16 +614,18 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
     table.sort(available_single, function(a, b) return (a.cost or 0) < (b.cost or 0) end)
     table.sort(available_aoe, function(a, b) return (a.cost or 0) < (b.cost or 0) end)
 
+    -- Sleepers in wake order: the focus target first when asleep.
+    local focus_idx = settings.focus_enabled and settings.focus_target
+        and common.get_party_index_by_name(settings.focus_target)
+    local order = {}
+    for _, idx in ipairs(sleeping_members) do
+        if idx == focus_idx then table.insert(order, 1, idx) else table.insert(order, idx) end
+    end
+
     -- If 2+ members are sleeping, use AOE. A targetable AOE (Curaga, Divine Waltz)
-    -- radiates from its target, so aim it at a sleeper in range -- the focus target
-    -- first when asleep. Self-centred ones (Healing Breeze) keep their <me>.
+    -- radiates from its target, so aim it at a sleeper in range, in wake order.
+    -- Self-centred ones (Healing Breeze) keep their <me>.
     if #sleeping_members >= 2 and #available_aoe > 0 then
-        local focus_idx = settings.focus_enabled and settings.focus_target
-            and common.get_party_index_by_name(settings.focus_target)
-        local order = {}
-        for _, idx in ipairs(sleeping_members) do
-            if idx == focus_idx then table.insert(order, 1, idx) else table.insert(order, idx) end
-        end
         for _, ability in ipairs(available_aoe) do
             local targeted = type(ability.command) == 'function'
             for _, idx in ipairs(targeted and order or { 0 }) do
@@ -643,33 +645,21 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
         end
     end
 
-    -- Otherwise use single-target on first sleeping member
+    -- Otherwise single-target the first sleeper in reach, in wake order: one out
+    -- of range is passed over rather than holding the tick on a cast that can't land.
     if #sleeping_members > 0 and #available_single > 0 then
-        local target_index = sleeping_members[1]
-
-        -- Check if focus target is sleeping (if focus is enabled)
-        if settings.focus_enabled and settings.focus_target then
-            local focus_party_index = common.get_party_index_by_name(settings.focus_target)
-            if focus_party_index then
-                for _, idx in ipairs(sleeping_members) do
-                    if idx == focus_party_index then
-                        target_index = focus_party_index
-                        break
+        for _, idx in ipairs(order) do
+            local m = state.party[idx]
+            if m and m.target_index and m.target_index > 0 then
+                for _, ability in ipairs(available_single) do
+                    if not common.is_command_blocked(ability.command)
+                        and common.can_be_helped(m.target_index, ability.range) then
+                        local desc = string.format('Waking %s with %s', m.name or 'party member', ability.name)
+                        local result = action_core.try_use(ability, job_def, settings, idx, desc)
+                        if result then
+                            return result
+                        end
                     end
-                end
-            end
-        end
-
-        local target_member = target_index == 0 and state.player or state.party[target_index]
-        local target_name = (target_member and target_member.name) or 'party member'
-
-        for _, ability in ipairs(available_single) do
-            local blocked_by = common.is_command_blocked(ability.command)
-            if not blocked_by then
-                local desc = string.format('Waking %s with %s', target_name, ability.name)
-                local result, reason = action_core.try_use(ability, job_def, settings, target_index, desc)
-                if result then
-                    return result
                 end
             end
         end

@@ -956,10 +956,15 @@ common.DEBUFF_NAMES = {
 -- Slow), and the until-removed group (Disease/Curse/Bane/Plague -> INFINITE, which
 -- also overrides the 120s default back to no-timer). Erasable 120s debuffs
 -- (Poison/Paralyze/Blind/Silence/Dia/Bio) fall through to that default. Debuffs
--- nothing strips (Amnesia/Charm/Terror) are intentionally absent -- timing
--- them out buys nothing.
+-- nothing strips (Amnesia/Terror) are intentionally absent -- timing them out
+-- buys nothing. Charm is the exception: nothing strips it, but it makes
+-- can_be_helped skip the member, so a missed wear-off would leave them unhelped
+-- for the 300s unknown-status fallback. A charm that outlasts the 60s costs only
+-- the casts it wastes until it wears off.
 local INFINITE = false  -- tracked but never timer-expired
 local BASE_DEBUFF_DURATION = {
+    [14] = 60,        -- Charm       (none; backstop for game_state.charmed)
+    [17] = 60,        -- Charm II    (none; backstop for game_state.charmed)
     [2]  = 90,        -- Sleep       (Cure/wake; not erasable)
     [19] = 90,        -- Sleep II    (Cure/wake; not erasable)
     [7]  = 60,        -- Petrification (Stona; not erasable)
