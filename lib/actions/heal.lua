@@ -255,7 +255,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
                 -- range right now, or the boost (Divine Seal, Rapture, Contradance,
                 -- Apogee) is wasted on a member nothing can reach.
                 local follow = heal.select_ability(available_abilities, c.hpp, job_def, player_resource, c.index, nil, settings)
-                local follow_ok = follow ~= nil and common.is_in_range(c.m.target_index,
+                local follow_ok = follow ~= nil and common.can_be_helped(c.m.target_index,
                     type(follow.range) == 'number' and follow.range or 21)
 
                 for _, ability in ipairs(available_critical) do
@@ -266,7 +266,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
                         local is_boost = type(ability.command) ~= 'function'
                         local ok = follow_ok
                         if not is_boost then
-                            ok = c.index ~= 0 and common.is_in_range(c.m.target_index,
+                            ok = c.index ~= 0 and common.can_be_helped(c.m.target_index,
                                 type(ability.range) == 'number' and ability.range or 21)
                         end
                         local command = ok and common.build_ability_command(ability, is_boost and 0 or c.index)
@@ -345,7 +345,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
                 local outside_abilities = common.outside_abilities(available_abilities)
                 local selected_ability = heal.select_ability(outside_abilities, focus_hpp, job_def, player_resource, nil, tt, settings)
                 local ability_range = selected_ability and type(selected_ability.range) == 'number' and selected_ability.range or 21
-                if selected_ability and common.is_in_range(focus_target_index, ability_range) then
+                if selected_ability and common.can_be_helped(focus_target_index, ability_range) then
                     -- Check stratagems before casting
                     local strat_result = common.check_stratagem(job_def, settings, selected_ability.name, selected_ability)
                     if strat_result == false then return nil
@@ -375,7 +375,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
                     local outside_abilities = common.outside_abilities(available_abilities)
                     local selected_ability = heal.select_ability(outside_abilities, focus_hpp, job_def, player_resource, nil, al_member, settings)
                     local ability_range = selected_ability and type(selected_ability.range) == 'number' and selected_ability.range or 21
-                    if selected_ability and common.is_in_range(al_member.target_index, ability_range) then
+                    if selected_ability and common.can_be_helped(al_member.target_index, ability_range) then
                         -- Check stratagems before casting
                         local strat_result = common.check_stratagem(job_def, settings, selected_ability.name, selected_ability)
                         if strat_result == false then return nil
@@ -419,7 +419,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
                     
                     local ability_range = selected_ability and type(selected_ability.range) == 'number' and selected_ability.range or 21
                     -- Out of range: fall through so everyone else in reach still gets healed
-                    if selected_ability and common.is_in_range(focus_target_index, ability_range) then
+                    if selected_ability and common.can_be_helped(focus_target_index, ability_range) then
                         -- Check stratagems before casting
                         local strat_result = common.check_stratagem(job_def, settings, selected_ability.name, selected_ability)
                         if strat_result == false then return nil
@@ -465,7 +465,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
         end
 
         local ability_range = selected_ability and type(selected_ability.range) == 'number' and selected_ability.range or 21
-        local reachable = selected_ability and common.is_in_range(e.target_index, ability_range)
+        local reachable = selected_ability and common.can_be_helped(e.target_index, ability_range)
         if not reachable then
             common.debugf('[HEAL] Skipping %s (%.1f%%): %s', member and member.name or '?', e.hpp,
                 selected_ability and 'out of range' or 'no usable heal')
@@ -508,7 +508,7 @@ function heal.execute(settings, job_def, main_level, sub_level, player_resource)
                 local ok, reason = action_core.is_usable(a, job_def, common.effective_ability_cost(a, settings, job_def))
                 if not ok and reason and reason:find('cooldown')
                     and action_core.recast_remaining(a) <= HEAL_HOLD_MAX_RECAST
-                    and common.is_in_range(e.target_index, type(a.range) == 'number' and a.range or 21) then
+                    and common.can_be_helped(e.target_index, type(a.range) == 'number' and a.range or 21) then
                     common.debugf('[HEAL] Holding for %s recast (%.1f%% needs heal)', a.name, e.hpp)
                     return { hold = true }
                 end
@@ -696,7 +696,7 @@ end
 -- when t is out of range or outside the party for a party-only ability.
 local function aim(a, t)
     local tidx = t.m.target_index
-    if not (tidx and tidx > 0 and common.is_in_range(tidx, type(a.range) == 'number' and a.range or 21)) then
+    if not (tidx and tidx > 0 and common.can_be_helped(tidx, type(a.range) == 'number' and a.range or 21)) then
         return nil
     end
     if t.party_index then return common.build_ability_command(a, t.party_index) end

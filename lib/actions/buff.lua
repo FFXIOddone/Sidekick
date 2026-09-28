@@ -307,7 +307,7 @@ local function queue_song_stamp(ability, duration, state, target_index)
             -- all means one frame where a dead member looks covered.
             if ei and ei > 0 and (m.server_id or 0) > 0 and not song_member_dead(m)
                and common.get_party_member_zone(ti) == player_zone
-               and common.is_in_range(ei, SONG_AOE_RANGE) then
+               and common.can_be_helped(ei, SONG_AOE_RANGE) then
                 sids[#sids + 1] = m.server_id
             end
         end
@@ -540,7 +540,7 @@ local function no_readable_voter(party_buff_config, song_keys, state)
             if member and not member.is_trust then
                 local ei = member.target_index
                 if ei and ei > 0 and player_zone == common.get_party_member_zone(ti)
-                   and common.is_in_range(ei, SONG_AOE_RANGE) then
+                   and common.can_be_helped(ei, SONG_AOE_RANGE) then
                     return false
                 end
             end
@@ -638,7 +638,7 @@ local function area_needs_recast(ability, party_buff_config, song_keys, availabl
                 if member and not member.is_trust then
                     local ei = member.target_index
                     local mz = common.get_party_member_zone(ti)
-                    if ei and ei > 0 and player_zone == mz and common.is_in_range(ei, SONG_AOE_RANGE) then
+                    if ei and ei > 0 and player_zone == mz and common.can_be_helped(ei, SONG_AOE_RANGE) then
                         target_buffs = member.buffs or {}
                     end
                 end
@@ -1086,7 +1086,7 @@ function buff.execute(settings, job_def, main_level, sub_level, player_resource,
                                 local member_zone = common.get_party_member_zone(target_index)
                                 target_entity_index = party_member.target_index
                                 
-                                if target_entity_index and target_entity_index > 0 and player_zone == member_zone and common.is_in_range(target_entity_index, 20) then
+                                if target_entity_index and target_entity_index > 0 and player_zone == member_zone and common.can_be_helped(target_entity_index, 20) then
                                     target_buffs = party_member.buffs or {}
                                 else
                                     -- Party member not available or out of range, skip
@@ -1188,7 +1188,7 @@ function buff.execute(settings, job_def, main_level, sub_level, player_resource,
                                     local m = sub_party[local_idx]
                                     -- Same travel_buff Trust skip as the party loop -- other
                                     -- players' Trusts show up in the alliance sub-parties.
-                                    if m and not (ability.travel_buff and m.is_trust) and m.is_active and m.target_index and m.target_index > 0 and common.is_in_range(m.target_index, 20) then
+                                    if m and not (ability.travel_buff and m.is_trust) and m.is_active and m.target_index and m.target_index > 0 and common.can_be_helped(m.target_index, 20) then
                                         local al_buffs = m.buffs or {}
                                         local al_needs_buff = action_core.needs_buff(al_buffs, ability.buff_id)
                                         if al_needs_buff then
@@ -1228,7 +1228,7 @@ function buff.execute(settings, job_def, main_level, sub_level, player_resource,
                         local tt_key = 'tt_' .. sid
                         local is_tt_enabled = party_buff_config and party_buff_config[config_key] and party_buff_config[config_key][tt_key] == true
                         if is_tt_enabled and common.target_gate_ok(ability, config_key, tt_key, settings, party_buff_gates)
-                            and tt.is_active and tt.target_index and tt.target_index > 0 and common.is_in_range(tt.target_index, 20) then
+                            and tt.is_active and tt.target_index and tt.target_index > 0 and common.can_be_helped(tt.target_index, 20) then
                             local tt_buffs = tt.buffs or {}
                             local tt_needs_buff = action_core.needs_buff(tt_buffs, ability.buff_id)
                             if tt_needs_buff then

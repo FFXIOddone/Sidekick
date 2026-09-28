@@ -183,7 +183,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
                 if pm and pm.target_index and pm.target_index > 0
                    and is_ability_target_allowed(ability, i)
                    and can_remove_debuffs(ability, all_buffs[i], settings)
-                   and common.is_in_range(pm.target_index, radius) then
+                   and common.can_be_helped(pm.target_index, radius) then
                     count = count + 1
                 end
             end
@@ -192,7 +192,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
                 if al and al.target_index and al.target_index > 0
                    and is_ability_target_allowed(ability, alliance_sid_to_key[sid] or '')
                    and can_remove_debuffs(ability, buffs, settings)
-                   and common.is_in_range(al.target_index, radius) then
+                   and common.can_be_helped(al.target_index, radius) then
                     count = count + 1
                     table.insert(affected_alliance, sid)
                 end
@@ -221,7 +221,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
     if focus_party_idx ~= nil and debuff_counts[focus_party_idx] > 0 then
         local focus_member = focus_party_idx == 0 and state.player or state.party[focus_party_idx]
         local focus_target_index = focus_member and focus_member.target_index
-        local in_range = focus_party_idx == 0 or (focus_target_index and focus_target_index > 0 and common.is_in_range(focus_target_index, 20))
+        local in_range = focus_party_idx == 0 or (focus_target_index and focus_target_index > 0 and common.can_be_helped(focus_target_index, 20))
 
         if in_range then
             for _, ability in ipairs(available_abilities) do
@@ -241,7 +241,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
     -- Focus: tracked target
     if focus_tracked_sid and tracked_debuff_counts[focus_tracked_sid] and tracked_debuff_counts[focus_tracked_sid] > 0 then
         local tt = state.tracked[focus_tracked_sid]
-        if tt and tt.target_index and tt.target_index > 0 and common.is_in_range(tt.target_index, 20) then
+        if tt and tt.target_index and tt.target_index > 0 and common.can_be_helped(tt.target_index, 20) then
             for _, ability in ipairs(outside_abilities) do
                 if is_ability_target_allowed(ability, 'tt_' .. focus_tracked_sid) and can_remove_debuffs(ability, tracked_buffs[focus_tracked_sid], settings) then
                     local eff_cost = common.effective_ability_cost(ability, settings, job_def)
@@ -274,7 +274,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
     -- Focus: alliance member
     if focus_alliance_sid and alliance_debuff_counts[focus_alliance_sid] and alliance_debuff_counts[focus_alliance_sid] > 0 then
         local al_member = common.find_alliance_member(state, focus_alliance_sid)
-        if al_member and al_member.target_index and al_member.target_index > 0 and common.is_in_range(al_member.target_index, 20) then
+        if al_member and al_member.target_index and al_member.target_index > 0 and common.can_be_helped(al_member.target_index, 20) then
             for _, ability in ipairs(outside_abilities) do
                 if is_ability_target_allowed(ability, alliance_sid_to_key[focus_alliance_sid] or '') and can_remove_debuffs(ability, alliance_buffs[focus_alliance_sid], settings) then
                     local eff_cost = common.effective_ability_cost(ability, settings, job_def)
@@ -312,7 +312,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
         if i ~= focus_party_idx and debuff_counts[i] > 0 then
             local party_member = i == 0 and state.player or state.party[i]
             local member_target_index = party_member and party_member.target_index
-            local in_range = i == 0 or (member_target_index and member_target_index > 0 and common.is_in_range(member_target_index, 20))
+            local in_range = i == 0 or (member_target_index and member_target_index > 0 and common.can_be_helped(member_target_index, 20))
 
             if in_range then
                 if debuff_counts[i] > max_debuffs then
@@ -346,7 +346,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
         for sid, dc in pairs(tracked_debuff_counts) do
             if sid ~= focus_tracked_sid and dc > 0 then
                 local tt = state.tracked[sid]
-                if tt and tt.target_index and tt.target_index > 0 and common.is_in_range(tt.target_index, 20) then
+                if tt and tt.target_index and tt.target_index > 0 and common.can_be_helped(tt.target_index, 20) then
                     if dc > max_tracked_debuffs then
                         best_tracked_sid = sid
                         max_tracked_debuffs = dc
@@ -392,7 +392,7 @@ function status_removal.execute_debuff_removal(settings, job_def, main_level, su
         for sid, dc in pairs(alliance_debuff_counts) do
             if sid ~= focus_alliance_sid and dc > 0 then
                 local al_member = common.find_alliance_member(state, sid)
-                if al_member and al_member.target_index and al_member.target_index > 0 and common.is_in_range(al_member.target_index, 20) then
+                if al_member and al_member.target_index and al_member.target_index > 0 and common.can_be_helped(al_member.target_index, 20) then
                     if dc > max_alliance_debuffs then
                         best_alliance_sid = sid
                         max_alliance_debuffs = dc
@@ -628,7 +628,7 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
             for _, idx in ipairs(targeted and order or { 0 }) do
                 local m = idx > 0 and state.party[idx]
                 if idx == 0 or (m and m.target_index and m.target_index > 0
-                    and common.is_in_range(m.target_index, type(ability.range) == 'number' and ability.range or 21)) then
+                    and common.can_be_helped(m.target_index, type(ability.range) == 'number' and ability.range or 21)) then
                     local desc = targeted
                         and string.format('Waking %d sleeping members with %s on %s', #sleeping_members, ability.name, m.name or 'party member')
                         or string.format('Waking %d sleeping members with %s', #sleeping_members, ability.name)
@@ -678,7 +678,7 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
     if #sleeping_tracked > 0 and #available_single > 0 then
         for _, sid in ipairs(sleeping_tracked) do
             local tt = state.tracked[sid]
-            if tt and tt.target_index and tt.target_index > 0 and common.is_in_range(tt.target_index, 20) then
+            if tt and tt.target_index and tt.target_index > 0 and common.can_be_helped(tt.target_index, 20) then
                 for _, ability in ipairs(available_single) do
                     if ability.target_outside and ability.wakes then
                         local blocked_by = common.is_command_blocked(ability.command)
@@ -710,7 +710,7 @@ function status_removal.execute_wake(settings, job_def, main_level, sub_level, p
     if #sleeping_alliance > 0 and #available_single > 0 then
         for _, sid in ipairs(sleeping_alliance) do
             local al_member = common.find_alliance_member(state, sid)
-            if al_member and al_member.target_index and al_member.target_index > 0 and common.is_in_range(al_member.target_index, 20) then
+            if al_member and al_member.target_index and al_member.target_index > 0 and common.can_be_helped(al_member.target_index, 20) then
                 for _, ability in ipairs(available_single) do
                     if ability.target_outside and ability.wakes then
                         local blocked_by = common.is_command_blocked(ability.command)

@@ -641,7 +641,7 @@ local function automation_tick()
                     desired_range = 15
                 end
 
-                local in_range = common.is_in_range(bt_index, desired_range)
+                local in_range = common.can_be_helped(bt_index, desired_range)
 
                 if in_range and range_state.follow_enabled == true then
                     -- Within range, disable follow

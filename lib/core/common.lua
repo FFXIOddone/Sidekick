@@ -1357,7 +1357,9 @@ function common.is_trust_excluded(name, server_id)
     return server_id ~= nil and server_id >= 0x1000000
 end
 
-function common.is_in_range(target_index, range)
+-- Whether the player can help target_index right now: within range yalms
+-- (default 21) and not charmed.
+function common.can_be_helped(target_index, range)
     -- Ensure range is a number
     local range_value = type(range) == 'number' and range or 21
     
@@ -1367,6 +1369,12 @@ function common.is_in_range(target_index, range)
         return false
     end
     
+    -- A charmed member counts as unreachable so every heal, buff,
+    -- cleanse and AOE-count check skips them without touching each call site.
+    if common.game_state.charmed[target_index] then
+        return false
+    end
+
     local target_entity = GetEntity(target_index)
     if not target_entity then
         return false
@@ -1406,7 +1414,7 @@ function common.group_in_aoe_range(radius, exclude)
                 -- AOE range: fail closed to keep the hold guarantee.
                 local ei = m.target_index
                 if type(ei) ~= 'number' or ei <= 0
-                   or not common.is_in_range(ei, radius) then
+                   or not common.can_be_helped(ei, radius) then
                     return false
                 end
             end
@@ -3438,6 +3446,7 @@ common.game_state = {
     alliance_size    = 0,                -- alliance sub-parties only (6-17)
     alliance_leaders = { [1] = 0, [2] = 0, [3] = 0 },
     tracked          = {},               -- keyed by server_id
+    charmed          = {},               -- target_index -> true while Charm 14/17 is up
     stratagems       = 0,                -- Scholar stratagem charges (0 when not SCH)
     ready_charges    = 0,                -- Beastmaster Ready charges (0 when not BST)
     pet_debuffs      = {},               -- pet's tracked statuses (buffs+debuffs); consumer filters by debuff_id
@@ -3674,6 +3683,7 @@ function common.refresh_game_state()
     state.alliance_size    = 0
     state.alliance_leaders = { [1] = 0, [2] = 0, [3] = 0 }
     state.tracked          = {}
+    state.charmed          = {}
     state.stratagems       = calculate_stratagems()
     state.ready_charges    = calculate_ready()
 
@@ -3908,6 +3918,20 @@ function common.refresh_game_state()
             }
         end
     end
+
+    -- Charmed members (Charm 14 / 17) are hostile to us and cannot be helped:
+    -- index them by target_index so can_be_helped rejects them.
+    local function mark_charmed(m)
+        if not (m and m.target_index and m.target_index > 0 and m.buffs) then return end
+        for _, bid in ipairs(m.buffs) do
+            if bid == 14 or bid == 17 then state.charmed[m.target_index] = true return end
+        end
+    end
+    for i = 1, 5 do mark_charmed(state.party[i]) end
+    for al_pi = 2, 3 do
+        for _, m in pairs(state.alliance[al_pi]) do mark_charmed(m) end
+    end
+    for _, tt in pairs(state.tracked) do mark_charmed(tt) end
 
     -- Clear pending_raise flags for any server_id whose entity is no longer dead.
     -- Iterating a sparse table while modifying it is safe in Lua (next-based iteration).

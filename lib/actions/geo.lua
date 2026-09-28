@@ -538,7 +538,7 @@ function geo.execute(settings, job_def, main_level, sub_level, player_resource)
             return nil
         end
         
-        local target_in_range = common.is_in_range(entity_target_index, 20)
+        local target_in_range = common.can_be_helped(entity_target_index, 20)
 
         if not target_in_range then
             return nil
