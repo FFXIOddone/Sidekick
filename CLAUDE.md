@@ -20,21 +20,45 @@ BST Fight) — "Deploy" is one job's ability name, never the feature's name. Ent
 
 ## Build / lint / test
 
-There is **none**. This is a game client addon, not a standalone project — no package
-manager, no build step, no test suite, no linter config. The Lua runs inside Ashita's
-embedded interpreter (LuaJIT + Ashita's `AshitaCore` FFI bindings), which does not exist in
-this dev environment, so **you cannot run or import the code here**. `require('common')`,
-`imgui`, `AshitaCore:...`, `T{}` etc. only resolve in-game.
+This is a game client addon, not a standalone project — no package manager, no build step.
+The Lua runs inside Ashita's embedded interpreter (LuaJIT + Ashita's `AshitaCore` FFI
+bindings); `require('common')`, `imgui`, `AshitaCore:...`, `T{}` etc. only resolve in-game.
 
-Verification is **in-game only**:
+**Offline checks** (`tests/`, `tools/`, see `tests/README.md`). A fake Ashita client
+(`tests/ashita.lua`) lets the real `lib/` modules load under plain `luajit`:
+```
+make test               # every tests/*_test.lua  (luajit tests/run.lua [FILE])
+make lint               # luacheck, config in .luacheckrc
+make check              # both; CI (.github/workflows/ci.yml) runs these on every push/PR
+```
+- Needs `luajit` (plain Lua 5.x fails: `lib/core/targets.lua` requires `ffi`) and `luacheck`.
+  If neither is installed, say so and rely on CI — don't claim tests pass.
+- `jobs_test.lua` checks every job file against CatsEyeXI server tables in `tests/data/`:
+  `spell_id`/`recast_id`/`ability_id` resolve to the row the command names, `cost` equals the
+  server MP cost, the id field matches the command type, buff/debuff ids exist, every
+  `default_settings` key is read by the engine, `priority_order` names only master-list
+  actions, each job is in `job_map`. A failure there is a wrong id in the job file, not a
+  test bug. It regex-parses `local job_map = {` and `local master_priority = {` out of
+  `Sidekick.lua` — renaming either breaks the test.
+- `action_core_test.lua` drives `is_usable` (MP gate, recasts, 0.5s post-recast delay,
+  Silence) and asserts exact reason strings — rewording one means updating the test.
+- A module calling an `AshitaCore` method the fake lacks fails with a nil-call error: add
+  that one method to `tests/ashita.lua`, reading from `fake.state`.
+- `tests/data/*.lua` is generated and pinned to a server commit — never hand-edit;
+  regenerate with `make resources CATSEYE=<catseyexi checkout>`. A spell kept though the
+  server has no row goes in `missing_on_server` in `jobs_test.lua`.
+- luacheck ignores pre-existing unused/shadowing warnings per file; don't add new ones.
+- Dev files are `export-ignore`d in `.gitattributes`; add any new dev-only file there.
+
+**Behavior is still verified in-game only** — the tests cover job data and gating, not the
+tick loop, targeting, or packets:
 - Reload after edits: `/addon reload sidekick` (or `/addon load sidekick` first time).
 - Open UI: `/sidekick` (alias `/sk`). Toggle automation: `/sidekick start` | `stop` | `toggle`.
 - Inspect live state: `/sidekick panel` (debug game-state panel), `/sidekick debug` (verbose log),
   `/sidekick recast` (recast timers), `/sidekick status`.
 
-Because the code can't execute outside the client, treat changes as unverified until the
-user confirms in-game. Prefer edits that are obviously correct by inspection; call out
-anything that needs a live check.
+Treat behavior changes as unverified until the user confirms in-game. Prefer edits that are
+obviously correct by inspection; call out anything that needs a live check.
 
 ## Architecture (big picture)
 
@@ -97,7 +121,8 @@ and `ARCHITECTURE.md` for every ability field (`level`, `cost`, `value`, `spell_
 
 **Ability id fields map 1:1 onto CatsEyeXI server SQL.** An ability carries exactly one
 cooldown id, and the *field name* — not the command text — selects which recast table
-`action_core.is_usable` reads, so it must match the command:
+`action_core.is_usable` reads, so it must match the command (`tests/jobs_test.lua` enforces
+all of this — run it after touching any id):
 
 | Field | Source | Applies to |
 |---|---|---|
@@ -124,7 +149,8 @@ intentionally **session-only** and never written to disk.
 - **New supported job:** add `lib/jobs/<job>.lua` (data only) and register its FFXI job id in
   the `job_map` in `load_single_job_definition` (`Sidekick.lua`). Main/sub abilities are merged
   automatically with subjob-duplicate filtering; the master `priority_order` in
-  `load_job_definition` defines execution order across both jobs.
+  `load_job_definition` defines execution order across both jobs. `jobs_test.lua` picks the
+  new file up automatically; `make test` catches a missing `job_map` entry or a bad id.
 - **New action type:** add `lib/actions/<x>.lua` following the `execute` contract, wire it
   into the `action_modules` table in `Sidekick.lua`, and add its name to the master
   `priority_order` and to each job's `priority_order`.
