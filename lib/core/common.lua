@@ -1449,7 +1449,9 @@ function common.announce_gather(ability_name, settings)
         return
     end
     last_gather_announce = now
-    AshitaCore:GetChatManager():QueueCommand(1, string.format('/p Gather together for %s', ability_name))
+    -- Line in the client's language; required here, not at the top: lang requires common.
+    local line = require('lib.core.lang').gather(ability_name, settings and settings.command_language)
+    AshitaCore:GetChatManager():QueueCommand(1, '/p ' .. line)
 end
 
 -- Get distance between player and party member

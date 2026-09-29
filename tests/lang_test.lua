@@ -63,3 +63,20 @@ test('a language with no resource slot falls back to English', function()
     reset();
     assert_eq(lang.translate('/ma "Cure" <me>', 'xx'), '/ma "Cure" <me>');
 end);
+
+test('a bare name tries spells then abilities, English when unknown', function()
+    reset();
+    assert_eq(lang.name('Cure', 'ja'), 'ケアル');
+    assert_eq(lang.name('Troubadour', 'ja'), 'トルバドゥール');
+    assert_eq(lang.name('Custom Spell', 'ja'), 'Custom Spell');
+    assert_eq(lang.name('Cure', 'en'), 'Cure');
+    assert_eq(lang.name('Cure', nil), 'Cure');
+end);
+
+test('gather alert phrase follows the language, English otherwise', function()
+    reset();
+    assert_eq(lang.gather('Cure', 'en'), 'Gather together.  Cure');
+    assert_eq(lang.gather('Cure', 'xx'), 'Gather together.  Cure');
+    -- 集まってください。 in Shift-JIS, the game's chat encoding.
+    assert_eq(lang.gather('Cure', 'ja'), '\x8f\x57\x82\xdc\x82\xc1\x82\xc4\x82\xad\x82\xbe\x82\xb3\x82\xa2\x81\x42  ケアル');
+end);
