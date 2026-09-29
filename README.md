@@ -66,6 +66,7 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 - **Favorites**: right-click any spell or ability and tick **Favorite** to pin it to the top of its list, sorted by group then name. — **Plush**
 - **Healing waits on a short recast**: when the only cure that can reach someone is a few seconds off cooldown, buffs, Geo, raises and follow wait for it instead of casting first. — **Crobat**
 - **Plenilune Embrace**: Blue Mage now uses the level-75 cure on party members, ahead of Magic Fruit. — **Camuel**
+- **`/sk profile <name>`**: list the settings profiles saved for your current job/subjob combo and load one by name from chat, no config window needed. — **Tai**
 
 ### Changed
 - **Resting holds**: nothing Sidekick does breaks a rest any more — it ends only at full MP or when the Follow Target passes **Distance**.
@@ -84,6 +85,7 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 - **BT unreliable in Alliance**: When the target changes from Red to Purple BT was lost.  Now falls back to one of the other groups BT when in an alliance. — **Tai**
 - **Barrier Tusk stops recasting itself**: it now watches for Physical Shield instead of Phalanx, so it is only cast once it wears off. — **Camuel**, **Stieg**
 - **Charmed members are left alone**: while someone is Charmed they are skipped for heals, buffs, cleanses, wakes and AOE counts, instead of wasting casts that can't land. — **Yumia**
+- **Entrust with the config window closed**: Entrust now fires in a fresh session and after a `/sk profile` load without the window ever being opened.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
@@ -318,6 +320,8 @@ Currently implemented support jobs:
 - `/sidekick toggle` or `/sk toggle` - Toggle automation on/off
 - `/sidekick config` or `/sk config` - Show/hide configuration UI
 - `/sidekick widget` or `/sk widget` - Show/hide the floating widget (profile/job line, Start/Stop, status and Track Target, pulled out of the config window)
+- `/sidekick profile` or `/sk profile` - List the settings profiles saved for the current job/subjob combo
+- `/sidekick profile <name>` - Load a settings profile by name (case-insensitive; `default` returns to the working copy)
 - `/sidekick focus <index>` - Set focus target (0-5, party member index)
 - `/sidekick focus clear` - Clear focus target
 - `/sidekick debug` or `/sk debug` - Toggle debug mode
