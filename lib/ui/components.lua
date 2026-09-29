@@ -3296,14 +3296,8 @@ function ui_components.render_profile_button(ctx, ops)
             ui_components.set_tooltip('Delete the selected (highlighted) profile.')
         end
 
-        local names = {}
-        for name in pairs(ops.list(ctx)) do
-            -- ops.DEFAULT_SLOT is the parked Default working copy, not a named profile.
-            if name ~= ops.DEFAULT_SLOT then
-                table.insert(names, name)
-            end
-        end
-        table.sort(names, function(a, b) return a:lower() < b:lower() end)
+        -- Sorted, Default slot excluded (the parked working copy is not a named profile).
+        local names = ops.names(ctx)
         -- List-box style: bordered child sized to the row count (+1 for the
         -- Default row, +16 for the border padding) so every profile is always
         -- visible without scrolling. The popup auto-sizes around it.

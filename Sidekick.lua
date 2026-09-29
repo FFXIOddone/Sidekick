@@ -1278,11 +1278,7 @@ ashita.events.register('command', 'sidekick_command', function(e)
             -- (and on-demand create) profiles['UNK/None'].
             common.errorf('Zoning; try again once loaded.')
         elseif name == '' then
-            local names = {}
-            for stored in pairs(ops.list(ctx)) do
-                if stored ~= ops.DEFAULT_SLOT then table.insert(names, stored) end
-            end
-            table.sort(names, function(a, b) return a:lower() < b:lower() end)
+            local names = ops.names(ctx)
             local active = ops.active(ctx) or 'Default'
             common.printf('Profiles for %s (active: %s): Default%s',
                 common.get_job_combo(), active,

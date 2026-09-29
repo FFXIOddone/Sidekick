@@ -396,6 +396,12 @@ local function profile_list(settings)
     return settings.profiles[combo]
 end
 
+-- Read-only view of the same list for lookups and listings: a miss must not
+-- leave an empty profiles[combo] entry behind for the next save to write.
+local function profile_peek(settings)
+    return settings.profiles and settings.profiles[common.get_job_combo()] or {}
+end
+
 -- Snapshot live settings (minus excluded keys) for storing under a name.
 local function profile_snapshot(settings)
     local snap = T{}
@@ -466,11 +472,15 @@ end
 -- the ctx object components already use (settings / job_def / save_callback).
 local profile_ops = {}
 
--- Exposed so the popup renderer can hide the parked slot from the named list.
-profile_ops.DEFAULT_SLOT = DEFAULT_SLOT
-
-function profile_ops.list(ctx)
-    return profile_list(ctx.settings)
+-- Named profiles for the current combo, sorted case-insensitively, Default
+-- slot excluded. Shared by the popup list and /sidekick profile.
+function profile_ops.names(ctx)
+    local names = {}
+    for stored in pairs(profile_peek(ctx.settings)) do
+        if stored ~= DEFAULT_SLOT then table.insert(names, stored) end
+    end
+    table.sort(names, function(a, b) return a:lower() < b:lower() end)
+    return names
 end
 
 -- Active profile validated against the current combo's list. active_profile is
@@ -478,7 +488,7 @@ end
 -- loaded on another combo must read as Default here, not as active.
 function profile_ops.active(ctx)
     local active = ctx.settings.active_profile
-    if active and profile_list(ctx.settings)[active] then
+    if active and profile_peek(ctx.settings)[active] then
         return active
     end
     return nil
@@ -511,13 +521,17 @@ function profile_ops.save_as(ctx, name)
     if ctx.save_callback then ctx.save_callback() end
 end
 
--- Case-insensitive lookup of a named profile for the current combo, for the
--- /sidekick profile command (chat input is not case-exact). Returns the stored
--- name, or nil. Never matches the parked Default slot.
+-- Lookup of a named profile for the current combo, for the /sidekick profile
+-- command. Exact match first: save does not dedupe on case, so 'Tank' and
+-- 'tank' can coexist and pairs order must not pick between them. Then
+-- case-insensitive (chat input is not case-exact). Returns the stored name,
+-- or nil. Never matches the parked Default slot.
 function profile_ops.find(ctx, name)
     if not name or name == '' then return nil end
+    local list = profile_peek(ctx.settings)
+    if list[name] and name ~= DEFAULT_SLOT then return name end
     local wanted = name:lower()
-    for stored in pairs(profile_list(ctx.settings)) do
+    for stored in pairs(list) do
         if stored ~= DEFAULT_SLOT and stored:lower() == wanted then
             return stored
         end
