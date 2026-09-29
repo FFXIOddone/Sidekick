@@ -3238,12 +3238,20 @@ end
 -- ============================================================================
 
 -- Typed profile name; session-only. Refilled from the active profile when the
--- popup opens and from list clicks afterward.
+-- popup opens, from list clicks, and whenever the active profile changes under
+-- the popup (a /sidekick profile load while it is open). Without that last
+-- refill the box kept the old name and Save took the rename path: the old
+-- profile's snapshot was replaced by the new one's and the new name vanished.
 local profile_name_buf = { '' }
+local last_active = nil
 
 function ui_components.render_profile_button(ctx, ops)
     local popup_id = '##profiles_popup'
     local active = ops.active(ctx)
+    if active ~= last_active then
+        profile_name_buf[1] = active or ''
+        last_active = active
+    end
 
     -- Fixed width, same as the Start/Stop button; long names clip.
     if imgui.Button((active or 'Default') .. '##profiles_btn', { AUTOMATION_BUTTON_WIDTH, 0 }) then
