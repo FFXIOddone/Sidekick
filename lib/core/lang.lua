@@ -41,8 +41,7 @@ function lang.translate(command, code)
     local name = command:sub(open + 1, close - 1)
     local index = lang.NAME_INDEX[code]
     local native
-    -- ponytail: Ashita resources carry only English and Japanese. French/German add a
-    -- lib/lang/<code>.lua English->native name table, consulted here when index is nil.
+    -- Ashita resources carry only English and Japanese names.
     if index then
         local ok, res = pcall(function()
             local rm = AshitaCore:GetResourceManager()

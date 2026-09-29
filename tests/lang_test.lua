@@ -61,5 +61,5 @@ end);
 
 test('a language with no resource slot falls back to English', function()
     reset();
-    assert_eq(lang.translate('/ma "Cure" <me>', 'fr'), '/ma "Cure" <me>');
+    assert_eq(lang.translate('/ma "Cure" <me>', 'xx'), '/ma "Cure" <me>');
 end);
