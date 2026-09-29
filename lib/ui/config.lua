@@ -625,14 +625,11 @@ local function render_header(ctx)
         end
         -- Settings profiles: button labeled with the active profile, opens
         -- the save/load panel (rendering in components, ops defined above).
-        -- Leads the job line, fixed at the Start/Stop button width. Hidden while
-        -- zoning: the job reads UNK/None then, and a click would save or load a
-        -- profile under that key. The config window already skips loading frames
-        -- (ui_config.render); the widget draws this header bare, so guard here.
-        if not common.is_loading() then
-            ui.render_profile_button(ctx, profile_ops)
-            imgui.SameLine()
-        end
+        -- Leads the job line, fixed at the Start/Stop button width. Greyed and
+        -- inert while zoning (see render_profile_button) rather than hidden, so
+        -- the job text does not shift left on the widget.
+        ui.render_profile_button(ctx, profile_ops)
+        imgui.SameLine()
         -- Center the job text on the button row (else it top-aligns).
         imgui.AlignTextToFramePadding()
         imgui.TextColored(ui.LIGHT_GREEN, string.format('%s %d / %s %d', main_job_name, main_level, sub_job_name, sub_level or 0))

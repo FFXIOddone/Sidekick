@@ -3247,22 +3247,36 @@ local last_active = nil
 
 function ui_components.render_profile_button(ctx, ops)
     local popup_id = '##profiles_popup'
-    local active = ops.active(ctx)
-    if active ~= last_active then
-        profile_name_buf[1] = active or ''
-        last_active = active
+    -- Zoning: the job reads UNK/None, so a click would save or load a profile
+    -- under that key. The config window already skips loading frames; the widget
+    -- draws the header bare, so guard here. Keep the last label (the UNK/None
+    -- lookup would flip it to Default), draw the button greyed and inert, and
+    -- skip the popup for the frame.
+    local zoning = common.is_loading()
+    local active = last_active
+    if not zoning then
+        active = ops.active(ctx)
+        if active ~= last_active then
+            profile_name_buf[1] = active or ''
+            last_active = active
+        end
     end
 
     -- Fixed width, same as the Start/Stop button; long names clip.
-    if imgui.Button((active or 'Default') .. '##profiles_btn', { AUTOMATION_BUTTON_WIDTH, 0 }) then
+    if zoning then imgui.PushStyleVar(ImGuiStyleVar_Alpha, 0.5) end
+    local clicked = imgui.Button((active or 'Default') .. '##profiles_btn', { AUTOMATION_BUTTON_WIDTH, 0 })
+    if zoning then imgui.PopStyleVar() end
+    if clicked and not zoning then
         profile_name_buf[1] = active or ''
         imgui.OpenPopup(popup_id)
     end
     if imgui.IsItemHovered() then
-        ui_components.set_tooltip('Settings profiles for this job/subjob combo.\n' ..
+        ui_components.set_tooltip(zoning and 'Profiles are unavailable while zoning.' or
+            'Settings profiles for this job/subjob combo.\n' ..
             'Save named snapshots of the current settings and load them later.\n' ..
             'Tweaks after a load auto-save to the working copy, never to the profile.')
     end
+    if zoning then return end
 
     if ui_components.begin_opaque_popup(popup_id) then
         imgui.PushItemWidth(238)

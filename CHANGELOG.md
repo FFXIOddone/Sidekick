@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Entrust silent with the config window closed**: `get_entrust_config` read the config window's own target/spell mirrors, which only the window's render seeds and every profile load clears. Entrust never fired in a fresh session until the window was opened once, and stopped after a `/sk profile` load with the window closed. It now reads `entrust_target` / `entrust_spell` from settings directly.
 - **Profile lookups no longer create entries**: an unknown name in `/sk profile`, or the Profile button label drawn each frame, left an empty `profiles[combo]` table behind for the next save to write. Read paths now use a non-creating view.
-- **Profile button hidden while zoning**: the widget's Profile button stayed clickable during a zone and could save or load under `UNK/None`.
+- **Profile button disabled while zoning**: the widget's Profile button stayed clickable during a zone and could save or load under `UNK/None`. It is now greyed and inert instead, keeping its place so the job line does not shift.
 
 ## [2.8.0] - 2026-09-09
 
