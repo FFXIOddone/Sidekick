@@ -30,6 +30,8 @@ local default_state = {
     target_index = 0,        -- current <t>
     commands = {},           -- every QueueCommand, oldest first
     strings = {},            -- [table] = { [id] = name } for GetResourceManager():GetString
+    -- [kind] = { [english name] = resource } for Get{Spell,Ability,Item}ByName (langId ignored)
+    resources = { spells = {}, abilities = {}, items = {} },
 };
 
 function fake.reset()
@@ -235,6 +237,9 @@ AshitaCore = {
             end,
             GetSpellById = function() return nil; end,
             GetItemById = function() return nil; end,
+            GetSpellByName = function(_, name) return fake.state.resources.spells[name]; end,
+            GetAbilityByName = function(_, name) return fake.state.resources.abilities[name]; end,
+            GetItemByName = function(_, name) return fake.state.resources.items[name]; end,
         };
     end,
     GetChatManager = function()

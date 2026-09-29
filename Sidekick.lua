@@ -10,7 +10,7 @@ Main addon file: job detection, event loop, command handler
 
 addon.name      = 'Sidekick'
 addon.author    = 'Seekey'
-addon.version   = '2.8.0'
+addon.version   = '2.9.0'
 addon.desc      = 'Support Job Automation Framework'
 addon.link      = 'https://github.com/seekey13/Sidekick'
 
@@ -104,6 +104,10 @@ local default_settings = T{
     rest_enabled = false,
     rest_timer = 5,
     rest_distance = 7,
+    -- Language the game client parses commands in: quoted spell/ability/item names
+    -- are sent in it (lib/core/lang.lua). 'en' | 'ja'. Set from the Start button's
+    -- right-click menu.
+    command_language = 'en',
     -- Main config sections render either as a stack of collapsing headers or as
     -- one row of tabs -- never both. Switched from the right-click menu on any
     -- header or tab. 'headers' | 'tabs'.

@@ -372,6 +372,7 @@ local PROFILE_EXCLUDED_KEYS = {
     active_profile = true,
     automation_enabled = true,
     load_stopped = true,
+    command_language = true,
     focus_target = true,
     follow_enabled = true,
     follow_target = true,
@@ -387,6 +388,13 @@ local PROFILE_EXCLUDED_KEYS = {
 -- Live settings are stashed here when a named profile is loaded, and restored
 -- when the user clicks 'Default' in the list. Never shown as a named profile.
 local DEFAULT_SLOT = '__default'
+
+-- Command Language choices (Start button right-click menu). Labels stay ASCII: the
+-- ImGui font may not carry Japanese glyphs.
+local COMMAND_LANGUAGES = {
+    { code = 'en', label = 'English' },
+    { code = 'ja', label = 'Japanese' },
+}
 
 -- Profile list for the current main/sub combo, created on demand.
 local function profile_list(settings)
@@ -642,6 +650,15 @@ local function render_header(ctx)
         end
         if imgui.IsItemHovered() then
             ui.set_tooltip('Stop automation whenever you change zones.')
+        end
+        -- The client's language: game commands carry spell/ability/item names in it.
+        imgui.Separator()
+        imgui.TextColored(ui.LIGHT_GRAY, 'Command language')
+        for _, option in ipairs(COMMAND_LANGUAGES) do
+            if imgui.Selectable(option.label, (settings.command_language or 'en') == option.code) then
+                settings.command_language = option.code
+                if save_callback then save_callback() end
+            end
         end
         ui.end_opaque_popup()
     end
