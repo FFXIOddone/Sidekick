@@ -499,7 +499,7 @@ function geo.execute(settings, job_def, main_level, sub_level, player_resource)
     -- Entrust Logic
     -- ========================================================================
     
-    local entrust_config = ui_config.get_entrust_config()
+    local entrust_config = ui_config.get_entrust_config(settings)
 
     if entrust_config then
         if settings['disabled_Entrust'] == true then
