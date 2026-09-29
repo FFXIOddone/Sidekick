@@ -1,0 +1,9 @@
+# Keep dev-only files out of release archives (git archive and GitHub source zips).
+tests/          export-ignore
+tools/          export-ignore
+.github/        export-ignore
+.editorconfig   export-ignore
+.gitattributes  export-ignore
+.luacheckrc     export-ignore
+.luarc.json     export-ignore
+Makefile        export-ignore
