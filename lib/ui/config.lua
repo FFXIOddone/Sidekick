@@ -852,9 +852,16 @@ function ui_config.get_party_buff_gates()
     return party_buff_gates
 end
 
-function ui_config.get_entrust_config()
+-- Read the persisted keys, not the entrust_*_name UI mirrors: those are seeded
+-- only by ui_config.render, which returns early while the window is closed or
+-- the player is loading, and profile_reset_session_state nils them. Reading
+-- the mirrors silenced Entrust in a fresh session until the window was opened
+-- once, and after any /sidekick profile load with the window closed.
+function ui_config.get_entrust_config(settings)
+    local target_name = settings.entrust_target
+    local spell_name = settings.entrust_spell
     -- Return nil if entrust target or spell is None
-    if not entrust_target_name or not entrust_spell_name then
+    if not target_name or not spell_name then
         return nil
     end
     
@@ -867,7 +874,7 @@ function ui_config.get_entrust_config()
     local target_index = nil
     for i = 1, 5 do
         local member_name = common.get_party_member_name(i)
-        if member_name and member_name == entrust_target_name then
+        if member_name and member_name == target_name then
             target_index = i
             break
         end
@@ -880,8 +887,8 @@ function ui_config.get_entrust_config()
     
     return {
         target_index = target_index,         -- 1-5 for P1-P5
-        target_name = entrust_target_name,   -- Character name
-        spell_name = entrust_spell_name,     -- Spell name like "Indi-Haste"
+        target_name = target_name,           -- Character name
+        spell_name = spell_name,             -- Spell name like "Indi-Haste"
     }
 end
 
