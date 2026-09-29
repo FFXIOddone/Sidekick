@@ -105,8 +105,7 @@ local default_settings = T{
     rest_timer = 5,
     rest_distance = 7,
     -- Language the game client parses commands in: quoted spell/ability/item names
-    -- are sent in it (lib/core/lang.lua). 'en' | 'ja'. Set from the Start button's
-    -- right-click menu.
+    -- are sent in it (lib/core/lang.lua). 'en' | 'ja'. Set from /sk panel.
     command_language = 'en',
     -- Main config sections render either as a stack of collapsing headers or as
     -- one row of tabs -- never both. Switched from the right-click menu on any

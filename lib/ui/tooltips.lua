@@ -213,6 +213,10 @@ return {
         'No combat gate -- kept up in and out of battle.\n\n' ..
         'Neither runs while you have Invisible up.',
 
+    command_language =
+        'Your game client\'s language. Spell, ability and item\n' ..
+        'names are sent in it so the client accepts the command.',
+
     afk_sleep =
         'Pauses automation after the Timeout with no\n' ..
         'party movement or combat. Move to resume.',
