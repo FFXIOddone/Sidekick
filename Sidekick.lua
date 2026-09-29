@@ -1273,6 +1273,10 @@ ashita.events.register('command', 'sidekick_command', function(e)
 
         if not job_def then
             common.errorf('No job loaded; profiles are per job/subjob combo.')
+        elseif common.is_loading() then
+            -- Zoning blanks the job to UNK/None; every branch below would key
+            -- (and on-demand create) profiles['UNK/None'].
+            common.errorf('Zoning; try again once loaded.')
         elseif name == '' then
             local names = {}
             for stored in pairs(ops.list(ctx)) do
