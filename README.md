@@ -54,6 +54,14 @@ A focused, support-oriented addon for Ashita v4 that automates healing, buffing,
 The one exception is **opt-in leader following** (off by default): with **Follow** enabled, Sidekick will `/follow` a chosen party member or tracked target when they walk beyond a set distance. It never moves your character unless you turn this on. A second, narrower exception is the **opt-in send-pet-at-target toggle** in the **Pet Control** section (Puppetmaster/Summoner/Beastmaster, off by default): it sends the *pet*, not the player, and only at the mob you pick from the dropdown beside the toggle — either your own cursor target (`<t>`, and only while you're engaged) or the battle target (`<bt>`, whatever the party is already fighting).
 
 ## Latest Updates
+### [Unreleased]
+
+### Added
+- **`/sk profile <name>`**: list the settings profiles saved for your current job/subjob combo and load one by name from chat, no config window needed. — **Tai**
+
+### Fixed
+- **Entrust with the config window closed**: Entrust now fires in a fresh session and after a `/sk profile` load without the window ever being opened.
+
 ### [2.8.0] - 2026-09-09
 
 ### Added

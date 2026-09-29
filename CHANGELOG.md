@@ -5,6 +5,16 @@ All notable changes to Sidekick will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`/sidekick profile` command** (`Sidekick.lua`, `profile_ops` in `lib/ui/config.lua`): `/sk profile` lists the profiles saved for the current job/subjob combo; `/sk profile <name>` loads one by name (exact match first, then case-insensitive) with the same parking, backfill and session-mirror reset a click in the popup performs; `/sk profile default` returns to the working copy. Refused while zoning, when the combo reads as `UNK/None`. The popup's name box refills whenever the active profile changes, so a command load under an open popup cannot turn the next Save into a rename. Thanks to **Tai** for the feature request (#250).
+
+### Fixed
+- **Entrust silent with the config window closed**: `get_entrust_config` read the config window's own target/spell mirrors, which only the window's render seeds and every profile load clears. Entrust never fired in a fresh session until the window was opened once, and stopped after a `/sk profile` load with the window closed. It now reads `entrust_target` / `entrust_spell` from settings directly.
+- **Profile lookups no longer create entries**: an unknown name in `/sk profile`, or the Profile button label drawn each frame, left an empty `profiles[combo]` table behind for the next save to write. Read paths now use a non-creating view.
+- **Profile button hidden while zoning**: the widget's Profile button stayed clickable during a zone and could save or load under `UNK/None`.
+
 ## [2.8.0] - 2026-09-09
 
 ### Added
