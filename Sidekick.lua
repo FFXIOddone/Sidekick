@@ -958,17 +958,6 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
         return
     end
 
-    -- Zero the server's autorun-cancel flag on position syncs (0x0D byte 0x42) so
-    -- /follow survives them. Only while native follow is enabled. Do NOT touch 0x37
-    -- byte 0x58: that is Flags4 (GeoIndi bits 0-6 + JobMasterFlag bit 7), not a
-    -- movement flag -- zeroing it wiped the job-mastery stars and the GEO Indi aura.
-    -- 0x0D is the busiest packet: read the byte in place, and splice a string rather
-    -- than totable(), which copies the whole packet a byte at a time.
-    if e.id == 0x0D and addon_settings and addon_settings.follow_enabled
-            and not addon_settings.multisend_follow and e.data:byte(0x42 + 1) ~= 0 then
-        e.data_modified = e.data:sub(1, 0x42) .. '\0' .. e.data:sub(0x42 + 2)
-    end
-
     -- Handle action packets (0x028): casting detection, buff tracking, sleep inference
     -- Message 230 = caster/player gains the effect, 266 = other party members/Trusts gain the effect
     -- Message 83  = buff/debuff removed from target (e.g. Paralyna removes Paralysis)

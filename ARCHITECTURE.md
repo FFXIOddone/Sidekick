@@ -737,10 +737,6 @@ rune's name, so relabelling a display string cannot rewrite a saved config.
   `can_attack`, so it works in towns/safe zones. Guards it keeps: zoning / mounted / dead /
   casting. Reuses the shared throttle via `automation.execute_command`; in the states it runs,
   the engine issues nothing, so the shared throttle never delays a heal.
-- Follow survives the server's position syncs via the **autorun-cancel packet guard** in
-  `Sidekick.lua`'s `packet_in` handler (see Event System); without it `/follow` breaks on every
-  sync. The guard is gated on `follow_enabled and not multisend_follow`, so behavior is unchanged
-  when following is off.
 - **Movement mode switch** (`multisend_follow`, checkbox in `/sk panel`, default off): when on,
   Sidekick uses the legacy Multisend attack-range follow instead — the config window shows the
   **Attack Range** combo and hides the Follow section, `follow.execute` returns `nil`, the packet
@@ -1126,7 +1122,7 @@ The debug row shows AFK state beside Moving/Action: `off` (disabled), `idle` (au
 | `load` | Sidekick.lua | Set initialisation flag |
 | `unload` | Sidekick.lua | Save settings |
 | `d3d_present` | Sidekick.lua | Automation tick + UI render |
-| `packet_in` | Sidekick.lua | Casting state (0x028), Bard song handshake (0x028 categories 8/4 plus the 0x0A drop, see [buff.lua](#bufflua--buff-maintenance)), Trust/pet buffs (0x028, 0x029), check response (0x0C9), zone change (0x0A), autorun-cancel guard (0x0D byte 0x42, only while `follow_enabled`) |
+| `packet_in` | Sidekick.lua | Casting state (0x028), Bard song handshake (0x028 categories 8/4 plus the 0x0A drop, see [buff.lua](#bufflua--buff-maintenance)), Trust/pet buffs (0x028, 0x029), check response (0x0C9), zone change (0x0A) |
 | `command` | Sidekick.lua | `/sidekick` command handler |
 
 ### Trust Buff Tracking

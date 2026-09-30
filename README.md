@@ -60,6 +60,9 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 - **Lighter on your frame rate**: Sidekick does far less work every frame, most noticeably with tracked/alliance targets or Follow on. — **Toots**, **Yunas**
 - **Quieter debug log**: `/sk debug` no longer prints a line for every buff gained or lost.
 
+### Fixed
+- **Indi auras stay visible with Follow on**: Follow no longer rewrites other players' position packets, which blanked their Geo Indi auras.
+
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ## Features
@@ -80,7 +83,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 - **Buff Maintenance**: Auto-apply and maintain self-buffs with single-target party buff support
 - **Resource Recovery**: Automated MP and TP recovery abilities
 - **Automatic Resting**: MP-based jobs automatically rest when idle to recover MP, with a configurable delay timer and optional follow-target distance monitoring. Once resting, Sidekick takes no other action — the rest ends at full MP or when the follow target moves out of range
-- **Leader Following** (opt-in, off by default): `/follow` a chosen party member or tracked target when they move beyond a set distance. Healing and every other support action always take priority, and an autorun-cancel packet guard keeps `/follow` alive across the server's position syncs so it doesn't break mid-route. The only non-combat movement Sidekick performs.
+- **Leader Following** (opt-in, off by default): `/follow` a chosen party member or tracked target when they move beyond a set distance. Healing and every other support action always take priority. The only non-combat movement Sidekick performs.
 - **AFK Sleep** (on by default): Sleeps automation after a configurable period with no party movement and no combat, and wakes on your own movement. A runtime pause, not a stop — nothing is saved or reset, so your settings and automation state survive a sleep cycle.
 - **Hold AOE for Group** (opt-in, off by default): Holds area buffs (Protectra/Shellra/Bar, Diamondhide), Bard area songs, fresh Phantom Rolls, and Accession/Diffusion buffs (never heals) until every alive, in-zone party member is in range, so nobody misses the AOE. Trusts, dead members, and members in another zone never cause a hold. Checkbox in `/sk panel`.
 - **Corsair Rolls**: Keeps two chosen Phantom Rolls up and Double-Ups each one according to a **Risk Tier** (Lowest / Medium / Highest) built on the roll's lucky and unlucky numbers, backing off at 11 so it can't bust. **Snake Eye** is used for guaranteed finishes and **Fold** clears a Bust the moment it lands. Roll totals are read from the action packet, and the second roll is held back while Bust is active.
