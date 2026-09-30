@@ -963,12 +963,12 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
     -- byte 0x58: that is Flags4 (GeoIndi bits 0-6 + JobMasterFlag bit 7), not a
     -- movement flag -- zeroing it wiped the job-mastery stars and the GEO Indi aura.
     if addon_settings and addon_settings.follow_enabled and not addon_settings.multisend_follow then
-        if e.id == 0x0D then
+        -- Read the one byte first: 0x0D is the busiest packet, and totable() copies
+        -- the whole thing a byte at a time.
+        if e.id == 0x0D and e.data:byte(0x42 + 1) ~= 0 then
             local packet = e.data:totable()
-            if packet[0x42 + 1] ~= 0 then
-                packet[0x42 + 1] = 0
-                e.data_modified = packet
-            end
+            packet[0x42 + 1] = 0
+            e.data_modified = packet
         end
     end
 
