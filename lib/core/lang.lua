@@ -12,10 +12,12 @@ local common = require('lib.core.common')
 
 local lang = {}
 
--- Language code -> Name[] slot of an Ashita resource (Default, Japanese, English).
-lang.NAME_INDEX = { ja = 2 }
-
-local ENGLISH = 2  -- Ashita langId for English (0 Default, 1 Japanese, 2 English)
+-- Ashita numbers its languages two ways. The langId argument of Get*ByName is
+-- 0 Default, 1 Japanese, 2 English; a resource's Lua Name[] slots are 0 Default,
+-- 1 English, 2 Japanese. Resources carry only these two languages, so 'ja' is
+-- the only one a command can be translated into.
+local ENGLISH = 2   -- langId
+local JAPANESE = 2  -- Name[] slot
 
 -- Command verb -> resource manager lookup for its quoted name.
 local LOOKUP = {
@@ -24,17 +26,14 @@ local LOOKUP = {
     item = 'GetItemByName', equip = 'GetItemByName',
 }
 
--- Native name of English `name` in language `code`, looked up with resource
--- manager `method`. Returns nil when unknown or empty.
-local function lookup(method, name, code)
-    -- Ashita resources carry only English and Japanese names.
-    local index = lang.NAME_INDEX[code]
-    if not index then return nil end
+-- Japanese name of English `name`, looked up with resource manager `method`.
+-- Returns nil when unknown or empty.
+local function lookup(method, name)
     local ok, res = pcall(function()
         local rm = AshitaCore:GetResourceManager()
         return rm[method](rm, name, ENGLISH)
     end)
-    local native = ok and res and res.Name and res.Name[index]
+    local native = ok and res and res.Name and res.Name[JAPANESE]
     if native and native ~= '' then return native end
     return nil
 end
@@ -43,44 +42,34 @@ end
 -- Args: command (string) - '/ma "Cure" <p1>', '/equip ammo "X" 0', ...
 --       code (string|nil) - settings.command_language ('en', 'ja')
 -- Returns: string - the translated command, or the original when there is nothing
---          to translate or no native name is known (unknown/custom name, language
---          without a resource slot).
+--          to translate or no Japanese name is known (unknown/custom name).
 function lang.translate(command, code)
-    if not code or code == 'en' then return command end
-
+    if code ~= 'ja' then return command end
     local method = LOOKUP[command:match('^/(%a+)') or '']
-    local open = command:find('"', 1, true)
-    local close = open and command:find('"', open + 1, true)
-    if not method or not close then return command end
+    if not method then return command end
 
-    local name = command:sub(open + 1, close - 1)
-    local native = lookup(method, name, code)
-    if not native then
-        common.debugf('[LANG] No %s name for "%s"; sending English', code, name)
-        return command
-    end
-    return command:sub(1, open) .. native .. command:sub(close)
+    -- gsub keeps the match when the function returns nil.
+    return (command:gsub('"([^"]*)"', function(name)
+        local native = lookup(method, name)
+        if not native then
+            common.debugf('[LANG] No ja name for "%s"; sending English', name)
+            return nil
+        end
+        return '"' .. native .. '"'
+    end, 1))
 end
 
--- Translate a bare spell or ability name, with no command verb to pick the table:
--- tries spells, then abilities. For chat lines (the Hold AOE gather alert).
--- Returns: string - the native name, or `name` unchanged when none is known.
-function lang.name(name, code)
-    if not code or code == 'en' then return name end
-    return lookup('GetSpellByName', name, code) or lookup('GetAbilityByName', name, code) or name
-end
-
--- Hold AOE gather alert phrase per language. Written as Shift-JIS bytes, the
+-- Hold AOE gather alert phrase in Japanese. Written as Shift-JIS bytes, the
 -- game's chat encoding (the resource names above already come back in it).
-local GATHER = {
-    en = 'Gather together.',
-    ja = '\x8f\x57\x82\xdc\x82\xc1\x82\xc4\x82\xad\x82\xbe\x82\xb3\x82\xa2\x81\x42', -- 集まってください。
-}
+local JA_GATHER = '\x8f\x57\x82\xdc\x82\xc1\x82\xc4\x82\xad\x82\xbe\x82\xb3\x82\xa2\x81\x42' -- 集まってください。
 
--- Party chat text for the Hold AOE gather alert: phrase plus ability name, both
--- in language `code`; English when the language has no phrase.
+-- Party chat text for the Hold AOE gather alert: phrase plus ability name, in
+-- language `code`. A bare name has no verb to pick the table, so Japanese tries
+-- spells, then abilities, and keeps the English name when neither knows it.
 function lang.gather(ability_name, code)
-    return (GATHER[code] or GATHER.en) .. '  ' .. lang.name(ability_name, code)
+    if code ~= 'ja' then return 'Gather together.  ' .. ability_name end
+    local native = lookup('GetSpellByName', ability_name) or lookup('GetAbilityByName', ability_name)
+    return JA_GATHER .. '  ' .. (native or ability_name)
 end
 
 return lang

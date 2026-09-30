@@ -1,9 +1,9 @@
 local fake = require('tests.ashita');
 local lang = require('lib.core.lang');
 
--- A resource as Ashita returns it: Name[] slots Default / Japanese / English.
+-- A resource as Ashita's Lua binding returns it: Name[] slots 0 Default, 1 English, 2 Japanese.
 local function res(en, ja)
-    return { Name = { en, ja, en } };
+    return { Name = { [0] = en, en, ja } };
 end
 
 local function reset()
@@ -59,24 +59,20 @@ test('unknown names, empty resource names and unquoted commands fall back to Eng
     assert_eq(lang.translate('/debuff 409', 'ja'), '/debuff 409');
 end);
 
-test('a language with no resource slot falls back to English', function()
+test('any language but Japanese sends English', function()
     reset();
     assert_eq(lang.translate('/ma "Cure" <me>', 'xx'), '/ma "Cure" <me>');
-end);
-
-test('a bare name tries spells then abilities, English when unknown', function()
-    reset();
-    assert_eq(lang.name('Cure', 'ja'), 'ケアル');
-    assert_eq(lang.name('Troubadour', 'ja'), 'トルバドゥール');
-    assert_eq(lang.name('Custom Spell', 'ja'), 'Custom Spell');
-    assert_eq(lang.name('Cure', 'en'), 'Cure');
-    assert_eq(lang.name('Cure', nil), 'Cure');
 end);
 
 test('gather alert phrase follows the language, English otherwise', function()
     reset();
     assert_eq(lang.gather('Cure', 'en'), 'Gather together.  Cure');
+    assert_eq(lang.gather('Cure', nil), 'Gather together.  Cure');
     assert_eq(lang.gather('Cure', 'xx'), 'Gather together.  Cure');
     -- 集まってください。 in Shift-JIS, the game's chat encoding.
-    assert_eq(lang.gather('Cure', 'ja'), '\x8f\x57\x82\xdc\x82\xc1\x82\xc4\x82\xad\x82\xbe\x82\xb3\x82\xa2\x81\x42  ケアル');
+    local ja = '\x8f\x57\x82\xdc\x82\xc1\x82\xc4\x82\xad\x82\xbe\x82\xb3\x82\xa2\x81\x42  ';
+    -- A bare name tries spells, then abilities, and stays English when unknown.
+    assert_eq(lang.gather('Cure', 'ja'), ja .. 'ケアル');
+    assert_eq(lang.gather('Troubadour', 'ja'), ja .. 'トルバドゥール');
+    assert_eq(lang.gather('Custom Spell', 'ja'), ja .. 'Custom Spell');
 end);

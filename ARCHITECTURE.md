@@ -22,6 +22,7 @@ lib/
     afk.lua                 AFK Sleep dead-man's switch (gates the tick after a stillness timeout)
     automation.lua          Priority-based action selection engine
     common.lua              Shared utilities (logging, party, buffs, commands)
+    lang.lua                Command language (spell/ability/item names sent in the client's language)
     parse_packets.lua       Raw-packet parsing (action packet 0x028)
     party_share.lua         Shared party list (publishes own party, auto-tracks every other session's)
     targets.lua             FFXI target-resolution helpers (from Ashita)

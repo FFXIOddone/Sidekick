@@ -364,7 +364,8 @@ end
 
 -- Keys never copied into or out of a snapshot: container/meta, run state
 -- (loading a profile must never start/stop automation), party-composition
--- state that would go stale between sessions, and per-character window chrome
+-- state that would go stale between sessions, the command language (a property
+-- of the game client, not of a job combo), and per-character window chrome
 -- -- a profile is per main/sub combo, the window is not, so loading one must
 -- not resize the window, re-chrome its sections, refade it, or open and close it.
 local PROFILE_EXCLUDED_KEYS = {

@@ -215,7 +215,8 @@ return {
 
     command_language =
         'Your game client\'s language. Spell, ability and item\n' ..
-        'names are sent in it so the client accepts the command.',
+        'names are sent in it so the client accepts the command.\n' ..
+        'The Hold AOE gather alert is sent in it too.',
 
     afk_sleep =
         'Pauses automation after the Timeout with no\n' ..
