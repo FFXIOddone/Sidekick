@@ -3523,23 +3523,27 @@ local function read_alliance_buffs(server_id)
     return trust_buffs[server_id] or {}
 end
 
+-- Internal helper: pcall(fn, ...) returning fallback on error or nil. Pass the method
+-- and its object (safe_call(0, pm.GetMemberHP, pm, i) == pm:GetMemberHP(i)) rather
+-- than a closure: the snapshot runs every frame and a closure per read is GC churn.
+local function safe_call(fallback, fn, ...)
+    local ok, val = pcall(fn, ...)
+    if ok and val ~= nil then return val end
+    return fallback
+end
+
 -- Internal helper: build a member snapshot from a party manager flat index (0-17).
 local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
-    local function safe_get(fn, fallback)
-        local ok, val = pcall(fn)
-        if ok and val ~= nil then return val end
-        return fallback
-    end
+    local pm = party_mgr
+    local server_id  = safe_call(0,  pm.GetMemberServerId,    pm, flat_index)
+    local name       = safe_call('', pm.GetMemberName,        pm, flat_index)
+    local target_idx = safe_call(0,  pm.GetMemberTargetIndex, pm, flat_index)
 
-    local server_id  = safe_get(function() return party_mgr:GetMemberServerId(flat_index)     end, 0)
-    local name       = safe_get(function() return party_mgr:GetMemberName(flat_index)         end, '')
-    local target_idx = safe_get(function() return party_mgr:GetMemberTargetIndex(flat_index)  end, 0)
-
-    local hp  = safe_get(function() return party_mgr:GetMemberHP(flat_index)           end, 0)
-    local hpp = safe_get(function() return party_mgr:GetMemberHPPercent(flat_index)    end, 0)
-    local mp  = safe_get(function() return party_mgr:GetMemberMP(flat_index)           end, 0)
-    local mpp = safe_get(function() return party_mgr:GetMemberMPPercent(flat_index)    end, 0)
-    local tp  = safe_get(function() return party_mgr:GetMemberTP(flat_index)           end, 0)
+    local hp  = safe_call(0, pm.GetMemberHP,         pm, flat_index)
+    local hpp = safe_call(0, pm.GetMemberHPPercent,  pm, flat_index)
+    local mp  = safe_call(0, pm.GetMemberMP,         pm, flat_index)
+    local mpp = safe_call(0, pm.GetMemberMPPercent,  pm, flat_index)
+    local tp  = safe_call(0, pm.GetMemberTP,         pm, flat_index)
 
     if not member_max_stats[server_id] then
         member_max_stats[server_id] = {}
@@ -3549,38 +3553,35 @@ local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
     local max_hp = member_max_stats[server_id].max_hp or 0
     local max_mp = member_max_stats[server_id].max_mp or 0
 
-    local job        = safe_get(function() return party_mgr:GetMemberMainJob(flat_index)      end, 0)
-    local sub_job    = safe_get(function() return party_mgr:GetMemberSubJob(flat_index)       end, 0)
-    local main_level = safe_get(function() return party_mgr:GetMemberMainJobLevel(flat_index) end, 0)
-    local sub_level  = safe_get(function() return party_mgr:GetMemberSubJobLevel(flat_index)  end, 0)
+    local job        = safe_call(0, pm.GetMemberMainJob,      pm, flat_index)
+    local sub_job    = safe_call(0, pm.GetMemberSubJob,       pm, flat_index)
+    local main_level = safe_call(0, pm.GetMemberMainJobLevel, pm, flat_index)
+    local sub_level  = safe_call(0, pm.GetMemberSubJobLevel,  pm, flat_index)
 
     -- /anon: the server only writes job/level into the party-list packet when the
     -- character is not anonymous (0x0dd_group_list.cpp), so our own entry comes
     -- back as job 0 / level 0 and every level gate in the action modules fails.
     -- The Player struct is unaffected, so patch our own row back up from it.
     if flat_index == 0 and main_level == 0 then
-        local p = safe_get(function() return AshitaCore:GetMemoryManager():GetPlayer() end, nil)
+        local p = safe_call(nil, function() return AshitaCore:GetMemoryManager():GetPlayer() end)
         if p then
-            job        = safe_get(function() return p:GetMainJob()      end, job)
-            sub_job    = safe_get(function() return p:GetSubJob()       end, sub_job)
-            main_level = safe_get(function() return p:GetMainJobLevel() end, main_level)
-            sub_level  = safe_get(function() return p:GetSubJobLevel()  end, sub_level)
+            job        = safe_call(job,        p.GetMainJob,      p)
+            sub_job    = safe_call(sub_job,    p.GetSubJob,       p)
+            main_level = safe_call(main_level, p.GetMainJobLevel, p)
+            sub_level  = safe_call(sub_level,  p.GetSubJobLevel,  p)
         end
     end
 
-    local job_name     = safe_get(function()
-        return AshitaCore:GetResourceManager():GetString('jobs.names_abbr', job)
-    end, '')
-    local sub_job_name = safe_get(function()
-        return AshitaCore:GetResourceManager():GetString('jobs.names_abbr', sub_job)
-    end, '')
+    local rm = AshitaCore:GetResourceManager()
+    local job_name     = safe_call('', rm.GetString, rm, 'jobs.names_abbr', job)
+    local sub_job_name = safe_call('', rm.GetString, rm, 'jobs.names_abbr', sub_job)
 
     local position = {x = 0, y = 0, z = 0}
     local entity_status = -1
     if entity_mgr and target_idx and target_idx > 0 then
-        local ok_x, px = pcall(function() return entity_mgr:GetLocalPositionX(target_idx) end)
-        local ok_y, py = pcall(function() return entity_mgr:GetLocalPositionY(target_idx) end)
-        local ok_z, pz = pcall(function() return entity_mgr:GetLocalPositionZ(target_idx) end)
+        local ok_x, px = pcall(entity_mgr.GetLocalPositionX, entity_mgr, target_idx)
+        local ok_y, py = pcall(entity_mgr.GetLocalPositionY, entity_mgr, target_idx)
+        local ok_z, pz = pcall(entity_mgr.GetLocalPositionZ, entity_mgr, target_idx)
         if ok_x and ok_y and ok_z then
             position = {x = px, y = py, z = pz}
         end
@@ -3654,22 +3655,16 @@ function common.refresh_game_state()
 
     local entity_mgr = common.get_entity_manager()
 
-    local function safe_get(fn, fallback)
-        local ok, val = pcall(fn)
-        if ok and val ~= nil then return val end
-        return fallback
-    end
-
     -- Cache alliance leader server IDs
-    state.alliance_leaders[1] = safe_get(function() return party_mgr:GetAlliancePartyLeaderServerId1() end, 0)
-    state.alliance_leaders[2] = safe_get(function() return party_mgr:GetAlliancePartyLeaderServerId2() end, 0)
-    state.alliance_leaders[3] = safe_get(function() return party_mgr:GetAlliancePartyLeaderServerId3() end, 0)
+    state.alliance_leaders[1] = safe_call(0, party_mgr.GetAlliancePartyLeaderServerId1, party_mgr)
+    state.alliance_leaders[2] = safe_call(0, party_mgr.GetAlliancePartyLeaderServerId2, party_mgr)
+    state.alliance_leaders[3] = safe_call(0, party_mgr.GetAlliancePartyLeaderServerId3, party_mgr)
 
     -- -----------------------------------------------------------------------
     -- Main party: flat indices 0-5
     -- -----------------------------------------------------------------------
     for i = 0, 5 do
-        local is_active = safe_get(function() return party_mgr:GetMemberIsActive(i) == 1 end, false)
+        local is_active = safe_call(0, party_mgr.GetMemberIsActive, party_mgr, i) == 1
         if not is_active then
             if i > 0 then state.party[i] = nil end
         else
@@ -3690,9 +3685,9 @@ function common.refresh_game_state()
                     if entity_mgr then
                         local pet_idx = pet_entity.TargetIndex
                         if pet_idx and pet_idx > 0 then
-                            local ok_px, px = pcall(function() return entity_mgr:GetLocalPositionX(pet_idx) end)
-                            local ok_py, py = pcall(function() return entity_mgr:GetLocalPositionY(pet_idx) end)
-                            local ok_pz, pz = pcall(function() return entity_mgr:GetLocalPositionZ(pet_idx) end)
+                            local ok_px, px = pcall(entity_mgr.GetLocalPositionX, entity_mgr, pet_idx)
+                            local ok_py, py = pcall(entity_mgr.GetLocalPositionY, entity_mgr, pet_idx)
+                            local ok_pz, pz = pcall(entity_mgr.GetLocalPositionZ, entity_mgr, pet_idx)
                             if ok_px and ok_py and ok_pz then
                                 member.pet_position = {x = px, y = py, z = pz}
                             end
@@ -3749,7 +3744,7 @@ function common.refresh_game_state()
         local first = (party_index - 1) * 6   -- 6 or 12
         local last  = first + 5                -- 11 or 17
         for flat_i = first, last do
-            local is_active = safe_get(function() return party_mgr:GetMemberIsActive(flat_i) == 1 end, false)
+            local is_active = safe_call(0, party_mgr.GetMemberIsActive, party_mgr, flat_i) == 1
             if is_active then
                 state.alliance_size = state.alliance_size + 1
                 local local_index = flat_i - first   -- 0-5 within sub-party
@@ -3806,9 +3801,9 @@ function common.refresh_game_state()
             local position = {x = 0, y = 0, z = 0}
             if entity_mgr then
                 local tidx = entity.TargetIndex
-                local ok_x, px = pcall(function() return entity_mgr:GetLocalPositionX(tidx) end)
-                local ok_y, py = pcall(function() return entity_mgr:GetLocalPositionY(tidx) end)
-                local ok_z, pz = pcall(function() return entity_mgr:GetLocalPositionZ(tidx) end)
+                local ok_x, px = pcall(entity_mgr.GetLocalPositionX, entity_mgr, tidx)
+                local ok_y, py = pcall(entity_mgr.GetLocalPositionY, entity_mgr, tidx)
+                local ok_z, pz = pcall(entity_mgr.GetLocalPositionZ, entity_mgr, tidx)
                 if ok_x and ok_y and ok_z then
                     position = {x = px, y = py, z = pz}
                 end
