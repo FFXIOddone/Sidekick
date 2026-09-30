@@ -38,9 +38,9 @@ A test edits that table and calls `fake.reset()` between cases.
   every `default_settings` key is read by the engine, and each job is registered under
   its own id in `Sidekick.lua`. A failure here is a wrong id in a job file, not a test bug.
 - `action_core_test.lua` drives `action_core.is_usable` through the fake client.
-- `automation_test.lua` holds `automation.is_ready()` 0.1 s ahead of the command throttle.
 - `snapshot_test.lua` pins every field of a party and an alliance member snapshot, the
-  fallback when a party-manager read throws, and the `/anon` patch-up.
+  fallback when a party-manager read throws, the `/anon` patch-up, and the 0.1 s
+  `refresh_game_state_if_stale` guard.
 - `tracked_targets_test.lua` counts entity-slot reads per `refresh_game_state()`: a
   tracked target is read at its cached index, and misses share one rescan at most once
   a second.

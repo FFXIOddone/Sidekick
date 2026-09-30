@@ -69,12 +69,6 @@ function automation.notify_action_finished(is_spell_finish)
     last_command_time = math.max(last_command_time, finish_stamp)
 end
 
--- True from 0.1s before the throttle opens. The lead covers the throttle opening
--- between this check and execute_priority_actions' own, later in the same frame.
-function automation.is_ready()
-    return os.clock() - last_command_time >= command_throttle - 0.1
-end
-
 --[[
     Action Priority System
 ]]--

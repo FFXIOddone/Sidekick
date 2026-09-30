@@ -3634,6 +3634,14 @@ local function build_member_snapshot(pm, entity_mgr, flat_index)
     }
 end
 
+-- Per-frame callers (tick loop, follow tick, config window, panel) go through here:
+-- the engine acts at most every 1.1s, so one rebuild per 0.1s is plenty.
+function common.refresh_game_state_if_stale()
+    if os.clock() - common.game_state.refreshed_at > 0.1 then
+        common.refresh_game_state()
+    end
+end
+
 function common.refresh_game_state()
     local state = common.game_state
     state.refreshed_at     = os.clock()

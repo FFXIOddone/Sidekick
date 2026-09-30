@@ -47,3 +47,18 @@ test('an /anon player row takes job and level from the Player struct', function(
     local p = common.game_state.player;
     assert_eq({ p.job, p.job_name, p.sub_job, p.main_level, p.sub_level }, { 3, 'WHM', 4, 75, 37 });
 end);
+
+test('refresh_game_state_if_stale rebuilds at most every 0.1s', function()
+    setup();
+    local real_clock, now = os.clock, 100;
+    os.clock = function() return now; end
+    common.refresh_game_state();
+    now = 100.05;
+    common.refresh_game_state_if_stale();
+    local kept = common.game_state.refreshed_at;
+    now = 100.2;
+    common.refresh_game_state_if_stale();
+    local rebuilt = common.game_state.refreshed_at;
+    os.clock = real_clock;
+    assert_eq({ kept, rebuilt }, { 100, 100.2 });
+end);

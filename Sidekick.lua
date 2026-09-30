@@ -554,16 +554,19 @@ local function automation_tick()
     -- Gather player + party snapshot for this tick.
     -- All action modules can read common.game_state.player / common.game_state.party[1..5]
     -- instead of making individual API calls each cycle.
-    -- Every frame while the engine may act, else 10Hz: with the throttle closed the
-    -- snapshot only feeds the guards below. Forced on the first frame after loading:
-    -- the panel and follow_tick refresh on the loading screen too, and that snapshot
-    -- (blank party, HP 0 -> is_dead) must never be reused.
+    -- At most 10Hz, including while the engine idles with the throttle open: a
+    -- per-frame rebuild was the render-time jump seen once automation started.
+    -- Forced on the first frame after loading: the panel and follow_tick refresh on
+    -- the loading screen too, and that snapshot (blank party, HP 0 -> is_dead) must
+    -- never be reused.
     -- Must run BEFORE the mount guard so that is_mounted is refreshed every tick;
     -- otherwise once set to true it would never be cleared (the early return prevented
     -- refresh_game_state from executing).
-    if zoned or automation.is_ready() or os.clock() - common.game_state.refreshed_at > 0.1 then
+    if zoned then
         common.refresh_game_state()
         zoned = false
+    else
+        common.refresh_game_state_if_stale()
     end
 
     -- Point auto_element-tagged groups (RDM enspells, SCH storms) at the tier matching
@@ -794,10 +797,7 @@ local function follow_tick()
     -- Engine owns follow when it can (keeps healing above follow); only take over otherwise.
     if automation_enabled and common.can_attack() then return end
 
-    if not common.game_state or not common.game_state.refreshed_at
-        or os.clock() - common.game_state.refreshed_at > 0.1 then
-        common.refresh_game_state()
-    end
+    common.refresh_game_state_if_stale()
 
     if common.is_loading() then return end
     if common.is_mounted() then return end
