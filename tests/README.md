@@ -34,9 +34,12 @@ A test edits that table and calls `fake.reset()` between cases.
 - `jobs_test.lua` checks every `lib/jobs/*.lua` against the CatsEyeXI tables in `data/`:
   each `spell_id`, `recast_id` and `ability_id` resolves to the server row the command
   names, `cost` equals the server MP cost, every buff and debuff id is a status effect,
+  an ability the server gates on an Arts stance accepts both that stance and its Addendum,
   every `default_settings` key is read by the engine, and each job is registered under
   its own id in `Sidekick.lua`. A failure here is a wrong id in a job file, not a test bug.
 - `action_core_test.lua` drives `action_core.is_usable` through the fake client.
+- `stratagem_test.lua` drives `common.check_stratagem` with the real Scholar job file: which
+  stratagem fires next for a spell under each Arts stance.
 
 ## Adding a test
 
