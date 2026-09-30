@@ -1032,17 +1032,7 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
 
             for _, target in ipairs(actionPacket.Targets) do
                 for _, action in ipairs(target.Actions) do
-                    -- Resolve target name via fast index lookup (avoid O(2304) scan)
-                    local target_name = common.resolve_entity_name(target.Id)
-
-                    local buff_name = AshitaCore:GetResourceManager():GetString('buffs.names', action.Param)
-                    if not buff_name or buff_name == '' then
-                        buff_name = 'Buff#' .. action.Param
-                    end
-
                     if action.Message == 230 or action.Message == 266 then
-                        common.debugf('%s gained the effect of %s.', target_name, buff_name)
-
                         -- Base duration for timed expiry (nil = no timer). The
                         -- actor (UserId) is the caster -- used for per-caster song
                         -- slot accounting on the target.
@@ -1070,8 +1060,6 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
                         end
 
                     elseif action.Message == 83 then
-                        common.debugf('%s lost the effect of %s (via 0x028).', target_name, buff_name)
-
                         -- Remove from Trust, tracked target, alliance, and pet buff tracking (all in trust_buffs)
                         if target.Id >= 0x1000000 or common.is_tracked_target(target.Id) or common.is_alliance_member(target.Id) or common.is_pet(target.Id) then
                             common.handle_buff_removal(target.Id, action.Param)
@@ -1122,33 +1110,22 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
             local buff_id   = msg.param
 
             if server_id > 0 and buff_id > 0 and buff_id ~= 255 then
-                -- Resolve target name via fast index lookup (avoid O(2304) scan)
-                local target_name = common.resolve_entity_name(server_id)
-
                 -- When the target is dead (entity_status == 3), the server sends a 0x029
                 -- packet whose param is the SPELL ID of the rejected raise — not a buff ID.
                 -- Treat this as a signal that the target already has a pending raise.
                 if get_entity_status_in_gs(server_id) == 3 then
-                    common.debugf('[REVIVE] %s is dead — 0x029 param %d is a rejected raise spell ID; setting pending_raise flag',
-                        target_name, buff_id)
+                    common.debugf('[REVIVE] %d is dead — 0x029 param %d is a rejected raise spell ID; setting pending_raise flag',
+                        server_id, buff_id)
                     common.set_pending_raise(server_id)
                 elseif STATUS_GAIN_MESSAGES[msg.message] or STATUS_LOSE_MESSAGES[msg.message] then
                     -- Target is alive and this is a status gain/loss message, so
                     -- param is a real status id. Any other 0x029 (synth results,
                     -- damage, misses...) is ignored above -- its param is unrelated
                     -- and would otherwise inject a phantom status.
-                    local buff_name = AshitaCore:GetResourceManager():GetString('buffs.names', buff_id)
-                    if not buff_name or buff_name == '' then
-                        buff_name = 'Buff#' .. buff_id
-                    end
-
                     if STATUS_LOSE_MESSAGES[msg.message] then
-                        common.debugf('%s lost the effect of %s (via 0x029).', target_name, buff_name)
                         -- handle_buff_removal no-ops on untracked ids, so no guard needed.
                         common.handle_buff_removal(server_id, buff_id)
                     else
-                        common.debugf('%s gained the effect of %s (via 0x029).', target_name, buff_name)
-
                         -- Base duration for timed expiry; 0x029 has no spell id, so
                         -- this resolves via song range / buff name only. It also
                         -- carries no caster, so source stays nil (no song eviction --
