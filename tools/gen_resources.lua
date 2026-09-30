@@ -78,12 +78,13 @@ for _, v in ipairs(rows('spell_list.sql')) do
 end
 write('spells.lua', 'spell_list.sql: [spellid] = { name, mp = mpCost }', spells);
 
--- abilities: abilityId, name, job, level, validTarget, recastTime, recastId, ...
+-- abilities: abilityId, name, job, level, validTarget, recastTime, recastId, ... with
+-- addType second from last, the ADDTYPE bit flags (16 Light Arts, 32 Dark Arts, ...).
 local abilities = {};
 for _, v in ipairs(rows('abilities.sql')) do
-    table.insert(abilities, { v[1], ('    [%d] = { name = %q, recast = %d },'):format(v[1], v[2], v[7]) });
+    table.insert(abilities, { v[1], ('    [%d] = { name = %q, recast = %d, add_type = %d },'):format(v[1], v[2], v[7], v[20]) });
 end
-write('abilities.lua', 'abilities.sql: [abilityId] = { name, recast = recastId }', abilities);
+write('abilities.lua', 'abilities.sql: [abilityId] = { name, recast = recastId, add_type = addType }', abilities);
 
 -- status_effects: id, name, ...
 local effects = {};
