@@ -213,6 +213,12 @@ return {
         'No combat gate -- kept up in and out of battle.\n\n' ..
         'Neither runs while you have Invisible up.',
 
+    japanese_client =
+        'Turn on if your game client runs in Japanese.\n' ..
+        'Spell, ability and item names, and the Hold AOE\n' ..
+        'gather alert, are then sent in Japanese so the\n' ..
+        'client accepts them.',
+
     afk_sleep =
         'Pauses automation after the Timeout with no\n' ..
         'party movement or combat. Move to resume.',

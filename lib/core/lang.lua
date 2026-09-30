@@ -19,14 +19,10 @@ local lang = {}
 local ENGLISH = 2   -- langId
 local JAPANESE = 2  -- Name[] slot
 
--- Japanese client? The boot config's ashita.language/playonline names the
--- PlayOnline install the game runs from: 1 is the Japanese one, while 0 (Default)
--- and 2 both open the US install (plugins/sdk/Registry.h). Read once at load:
--- it can't change without a relaunch.
-local ok, playonline = pcall(function()
-    return AshitaCore:GetConfigurationManager():GetInt32('boot', 'ashita.language', 'playonline', 2)
-end)
-lang.japanese = ok and playonline == 1
+-- Japanese client? Mirrors settings.japanese_client (the Japanese Client checkbox
+-- in /sk panel), copied in by automation.execute_priority_actions each pass. Opt-in:
+-- Ashita's boot config doesn't reliably say which language the client runs in.
+lang.japanese = false
 
 -- Command verb -> resource manager lookup for its quoted name.
 local LOOKUP = {

@@ -20,19 +20,6 @@ local function reset()
     r.items['Pet Food Alpha'] = res('Pet Food Alpha', 'ペットフードα');
 end
 
-test('a Japanese client is detected from the boot config playonline language', function()
-    local function detect(playonline)
-        fake.reset();
-        fake.state.playonline_language = playonline;
-        package.loaded['lib.core.lang'] = nil;
-        return require('lib.core.lang').japanese;
-    end
-    assert_eq(detect(1), true);
-    assert_eq(detect(0), false);  -- Default opens the US install
-    assert_eq(detect(2), false);
-    package.loaded['lib.core.lang'] = lang;
-end);
-
 test('an English client passes the command through untouched', function()
     reset();
     lang.japanese = false;

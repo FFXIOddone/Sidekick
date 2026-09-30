@@ -108,6 +108,7 @@ function automation.execute_priority_actions(priority_order, action_modules, set
         return false
     end
     common.built_commands = {}
+    lang.japanese = settings.japanese_client == true
 
     -- ----------------------------------------------------------------
     -- Stratagem follow-up: if a stratagem JA fired on the previous tick,
