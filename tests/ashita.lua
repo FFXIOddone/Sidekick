@@ -32,6 +32,7 @@ local default_state = {
     strings = {},            -- [table] = { [id] = name } for GetResourceManager():GetString
     -- [kind] = { [english name] = resource } for Get{Spell,Ability,Item}ByName (English langId 2 only)
     resources = { spells = {}, abilities = {}, items = {} },
+    playonline_language = 0, -- boot config ashita.language/playonline, as catseyexi.ini ships it
 };
 
 function fake.reset()
@@ -240,6 +241,14 @@ AshitaCore = {
             GetSpellByName = function(_, name, lang_id) return lang_id == 2 and fake.state.resources.spells[name] or nil; end,
             GetAbilityByName = function(_, name, lang_id) return lang_id == 2 and fake.state.resources.abilities[name] or nil; end,
             GetItemByName = function(_, name, lang_id) return lang_id == 2 and fake.state.resources.items[name] or nil; end,
+        };
+    end,
+    GetConfigurationManager = function()
+        return {
+            GetInt32 = function(_, _, section, key, default)
+                if section == 'ashita.language' and key == 'playonline' then return fake.state.playonline_language; end
+                return default;
+            end,
         };
     end,
     GetChatManager = function()

@@ -89,7 +89,7 @@ local default_settings = T{
     -- Diffusion) until every alive, in-zone party member is in range. Opt-in;
     -- per-job-file like every setting, so flipping it on one job doesn't sync.
     hold_aoe_for_group = false,
-    -- Send "/p Gather together.  <ability>" while an AOE cast is held above.
+    -- Send "/p Gather together for <ability>" while an AOE cast is held above.
     -- On by default; turn off to hold silently without touching party chat.
     hold_aoe_announce = true,
     -- Gear-based heal potency bonuses (job-independent, set from /sk panel).
@@ -104,9 +104,6 @@ local default_settings = T{
     rest_enabled = false,
     rest_timer = 5,
     rest_distance = 7,
-    -- Language the game client parses commands in: quoted spell/ability/item names
-    -- are sent in it (lib/core/lang.lua). 'en' | 'ja'. Set from /sk panel.
-    command_language = 'en',
     -- Main config sections render either as a stack of collapsing headers or as
     -- one row of tabs -- never both. Switched from the right-click menu on any
     -- header or tab. 'headers' | 'tabs'.
@@ -1311,6 +1308,7 @@ ashita.events.register('command', 'sidekick_command', function(e)
         common.printf('  Automation: %s', automation_enabled and 'Enabled' or 'Disabled')
         common.printf('  Focus Target: %s', addon_settings.focus_target or 'None')
         common.printf('  Debug Mode: %s', common.debug and 'Enabled' or 'Disabled')
+        common.printf('  Client Language: %s', require('lib.core.lang').japanese and 'Japanese' or 'English')
         local tracked = common.get_tracked_targets()
         local tracked_names = {}
         for _, tt in pairs(tracked) do table.insert(tracked_names, tt.name) end

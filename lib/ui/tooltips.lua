@@ -170,12 +170,12 @@ return {
         'in-zone party member is in range, so nobody\n' ..
         'is left out. Trusts and members in another\n' ..
         'zone never cause a hold. While holding, sends\n' ..
-        '"/p Gather together.  <ability>" at most once\n' ..
+        '"/p Gather together for <ability>" at most once\n' ..
         'every 5 seconds. Off by default -- AOE fires\n' ..
         'whenever its normal condition is met.',
 
     hold_aoe_announce =
-        'Sends the "/p Gather together.  <ability>"\n' ..
+        'Sends the "/p Gather together for <ability>"\n' ..
         'party chat line while Hold AOE for Group is\n' ..
         'holding a cast, at most once every 5\n' ..
         'seconds. On by default. Turn off to hold\n' ..
@@ -212,11 +212,6 @@ return {
         'pick one twice. Held off while Overload is up.\n' ..
         'No combat gate -- kept up in and out of battle.\n\n' ..
         'Neither runs while you have Invisible up.',
-
-    command_language =
-        'Your game client\'s language. Spell, ability and item\n' ..
-        'names are sent in it so the client accepts the command.\n' ..
-        'The Hold AOE gather alert is sent in it too.',
 
     afk_sleep =
         'Pauses automation after the Timeout with no\n' ..

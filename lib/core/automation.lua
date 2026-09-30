@@ -18,10 +18,6 @@ local spell_finish_throttle = 3.1 -- spell casts carry a longer server-side lock
 -- priority loop can pre-empt it with something else.
 local pending_stratagem = nil   -- { action_type = string, timestamp = number }
 
--- settings.command_language, refreshed each priority pass; execute_command sends
--- quoted names in this language (see lib/core/lang.lua).
-local command_language = 'en'
-
 -- Action types that still run while a module holds ({hold = true}): the master
 -- priority from the hold down through 'rune'. geo/buff/revive/follow/rest wait --
 -- a long cast or a /follow would delay the heal being held for.
@@ -53,7 +49,7 @@ function automation.execute_command(command, description)
     end
 
     -- Execute the command, in the client's language (lookups above key on English)
-    AshitaCore:GetChatManager():QueueCommand(0, lang.translate(command, command_language))
+    AshitaCore:GetChatManager():QueueCommand(0, lang.translate(command))
     last_command_time = current_time
     if ability then require('lib.core.action_core').clear_ready_stamp(ability) end
 
@@ -112,7 +108,6 @@ function automation.execute_priority_actions(priority_order, action_modules, set
         return false
     end
     common.built_commands = {}
-    command_language = settings.command_language
 
     -- ----------------------------------------------------------------
     -- Stratagem follow-up: if a stratagem JA fired on the previous tick,

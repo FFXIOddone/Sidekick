@@ -54,36 +54,10 @@ A focused, support-oriented addon for Ashita v4 that automates healing, buffing,
 The one exception is **opt-in leader following** (off by default): with **Follow** enabled, Sidekick will `/follow` a chosen party member or tracked target when they walk beyond a set distance. It never moves your character unless you turn this on. A second, narrower exception is the **opt-in send-pet-at-target toggle** in the **Pet Control** section (Puppetmaster/Summoner/Beastmaster, off by default): it sends the *pet*, not the player, and only at the mob you pick from the dropdown beside the toggle — either your own cursor target (`<t>`, and only while you're engaged) or the battle target (`<bt>`, whatever the party is already fighting).
 
 ## Latest Updates
-### [2.8.0] - 2026-09-09
+### [2.9.0] - 2026-09-30
 
 ### Added
-- **Rune Fencer runes**: keeps your runes up — an **Idle Runes** set by default, swapped for **Vallation** / **Valiance** / **Pflug**'s own set as soon as that ability is ready so it is prepped before the pull, with the ability itself only firing in combat.
-- **Nightingale + Troubadour re-sing your songs**: with both up, every song being timed is re-sung at once so it lands faster and lasts twice as long (needs **Song Duration (s)**). — **Tai**
-- **Gather Alert**: the `/p Gather together for <ability>` line **Hold AOE for Group** sends while it waits can now be switched off, holding silently instead. — **Tai**
-- **Sections as tabs**: right-click any section header for *Display as tabs* (and any tab for *Display as section headers*); each tab carries its own enable checkbox, and disabled ones are dimmed. — **Bloodlust**
-- **Disabled tabs sort last**: sections you switch off move to the end of the tab bar, keeping the enabled ones together on the left.
-- **Custom window size**: right-click empty space in the config window for *Use a custom window size*, then drag the corner; *Fit window to contents* puts it back on auto-sizing. — **Toranko**
-- **Favorites**: right-click any spell or ability and tick **Favorite** to pin it to the top of its list, sorted by group then name. — **Plush**
-- **Healing waits on a short recast**: when the only cure that can reach someone is a few seconds off cooldown, buffs, Geo, raises and follow wait for it instead of casting first. — **Crobat**
-- **Plenilune Embrace**: Blue Mage now uses the level-75 cure on party members, ahead of Magic Fruit. — **Camuel**
-
-### Changed
-- **Resting holds**: nothing Sidekick does breaks a rest any more — it ends only at full MP or when the Follow Target passes **Distance**.
-- **Smarter AOE healing**: Curaga and Divine Waltz are aimed at the hurt group rather than you, each alliance party is checked on its own, and **AOE Targets** now has alliance buttons.
-- **AOE wake aimed at a sleeper**: Curaga or Divine Waltz used to wake two or more members is cast on a sleeping member in range, focus target first. — **Tai**
-- **Nightingale + Troubadour go first**: the pair is used before any song so the songs land inside it. — **Tai**
-
-### Fixed
-- **A config window error no longer takes the client down**: a fault while drawing the config window or the widget is now logged and that frame skipped, instead of crashing outright.
-- **Loading a profile no longer changes the window itself**: opacity, and whether the config window and the widget are open, are no longer saved into or applied by profiles.
-- **Erase clears everything the server says it can**: Stun, Addle, Requiem, Elegy, Enmity Down and Crit. Eva. Down are now erasable, are named in the per-status opt-out menus, and are cleared by the pet cleanses too. — **Atsumu**, **Tai**
-- **One far-away member no longer stops healing**: someone out of range is skipped and everyone else in reach still gets cured. — **Crobat**
-- **No wasted stratagems or critical boosts**: Accession-style charges and Divine Seal / Contradance-style boosts are only used when the cure can actually reach the target.
-- **Config window opens in front**: `/sk` now brings the config window above other addons' windows instead of opening it buried under them. — **Crobat**
-- **Enchanting Etude added**: the level-22 +CHR song was missing from the Bard song list. — **Draugr**
-- **BT unreliable in Alliance**: When the target changes from Red to Purple BT was lost.  Now falls back to one of the other groups BT when in an alliance. — **Tai**
-- **Barrier Tusk stops recasting itself**: it now watches for Physical Shield instead of Phalanx, so it is only cast once it wears off. — **Camuel**, **Stieg**
-- **Charmed members are left alone**: while someone is Charmed they are skipped for heals, buffs, cleanses, wakes and AOE counts, instead of wasting casts that can't land. — **Yumia**
+- **Japanese client support**: on a Japanese client, spells, abilities and items are sent under their Japanese names and the **Gather Alert** goes out in Japanese, detected automatically.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
@@ -464,9 +438,8 @@ you switch jobs. Delete the file to reset that character back to defaults.
 - `follow_enabled` (boolean): Enable opt-in leader following (`/follow` the follow target when far); off by default. Ignored while `multisend_follow` is on
 - `follow_distance` (number): Distance in yalms the follow target must exceed before `/follow` is sent (1-15, default 5)
 - `follow_target` (string): Character name to follow — a party member (P1-P5) or a session tracked target — shared by leader following and the resting distance check (optional)
-- `command_language` (string): Your game client's language; spell, ability and item names in commands and the Hold AOE gather alert are sent in it (`en` or `ja`, **Language** in `/sk panel`); `en` by default
-- `hold_aoe_for_group` (boolean): Hold AOE casts (Protectra/Shellra/Bar, Diamondhide, area songs, fresh Phantom Rolls, Accession/Diffusion) until every alive, in-zone party member is in range (checkbox in `/sk panel`); off by default. While holding, sends `/p Gather together.  <ability>` to the party, throttled to once every 5 seconds across all held abilities (opt-out with `hold_aoe_announce`)
-- `hold_aoe_announce` (boolean): Send the `/p Gather together.  <ability>` party chat line while `hold_aoe_for_group` is holding a cast (**Gather Alert** checkbox in `/sk panel`); on by default. Turning it off holds silently — the hold itself is unchanged
+- `hold_aoe_for_group` (boolean): Hold AOE casts (Protectra/Shellra/Bar, Diamondhide, area songs, fresh Phantom Rolls, Accession/Diffusion) until every alive, in-zone party member is in range (checkbox in `/sk panel`); off by default. While holding, sends `/p Gather together for <ability>` to the party, throttled to once every 5 seconds across all held abilities (opt-out with `hold_aoe_announce`)
+- `hold_aoe_announce` (boolean): Send the `/p Gather together for <ability>` party chat line (in Japanese on a Japanese client) while `hold_aoe_for_group` is holding a cast (**Gather Alert** checkbox in `/sk panel`); on by default. Turning it off holds silently — the hold itself is unchanged
 - `afk_enabled` (boolean): Enable AFK Sleep — pause automation after `afk_timeout` with no party movement and no combat, resume on your own movement (checkbox in `/sk panel`); on by default
 - `afk_timeout` (number): Seconds of no party movement and no combat before sleeping (60-3600, default 600). Stored in seconds; the `/sk panel` field shows minutes
 - `geo_enabled` (boolean): Enable geo management (Geo buffs, Geo debuffs, and Full Circle / luopan handling)

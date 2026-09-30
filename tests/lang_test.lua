@@ -6,8 +6,10 @@ local function res(en, ja)
     return { Name = { [0] = en, en, ja } };
 end
 
+-- Fresh fake with a few named resources, on a Japanese client.
 local function reset()
     fake.reset();
+    lang.japanese = true;
     local r = fake.state.resources;
     r.spells['Cure'] = res('Cure', 'ケアル');
     r.spells["Knight's Minne"] = res("Knight's Minne", '騎士のミンネ');
@@ -18,61 +20,68 @@ local function reset()
     r.items['Pet Food Alpha'] = res('Pet Food Alpha', 'ペットフードα');
 end
 
-test('English and unset language pass the command through untouched', function()
+test('a Japanese client is detected from the boot config playonline language', function()
+    local function detect(playonline)
+        fake.reset();
+        fake.state.playonline_language = playonline;
+        package.loaded['lib.core.lang'] = nil;
+        return require('lib.core.lang').japanese;
+    end
+    assert_eq(detect(1), true);
+    assert_eq(detect(0), false);  -- Default opens the US install
+    assert_eq(detect(2), false);
+    package.loaded['lib.core.lang'] = lang;
+end);
+
+test('an English client passes the command through untouched', function()
     reset();
-    assert_eq(lang.translate('/ja "Troubadour" <me>', 'en'), '/ja "Troubadour" <me>');
-    assert_eq(lang.translate('/ja "Troubadour" <me>', nil), '/ja "Troubadour" <me>');
+    lang.japanese = false;
+    assert_eq(lang.translate('/ja "Troubadour" <me>'), '/ja "Troubadour" <me>');
 end);
 
 test('a spell name is swapped for its Japanese name, target kept', function()
     reset();
-    assert_eq(lang.translate('/ma "Cure" <p1>', 'ja'), '/ma "ケアル" <p1>');
+    assert_eq(lang.translate('/ma "Cure" <p1>'), '/ma "ケアル" <p1>');
 end);
 
 test('job and pet abilities resolve against the ability table', function()
     reset();
-    assert_eq(lang.translate('/ja "Troubadour" <me>', 'ja'), '/ja "トルバドゥール" <me>');
-    assert_eq(lang.translate('/pet "Foot Kick" <t>', 'ja'), '/pet "フットキック" <t>');
+    assert_eq(lang.translate('/ja "Troubadour" <me>'), '/ja "トルバドゥール" <me>');
+    assert_eq(lang.translate('/pet "Foot Kick" <t>'), '/pet "フットキック" <t>');
 end);
 
 test('items resolve for /item and /equip, keeping the slot and bag number', function()
     reset();
-    assert_eq(lang.translate('/item "Echo Drops" <me>', 'ja'), '/item "やまびこ薬" <me>');
-    assert_eq(lang.translate('/equip ammo "Pet Food Alpha" 0', 'ja'), '/equip ammo "ペットフードα" 0');
+    assert_eq(lang.translate('/item "Echo Drops" <me>'), '/item "やまびこ薬" <me>');
+    assert_eq(lang.translate('/equip ammo "Pet Food Alpha" 0'), '/equip ammo "ペットフードα" 0');
 end);
 
 test('a name with pattern characters translates', function()
     reset();
-    assert_eq(lang.translate('/ma "Knight\'s Minne" <me>', 'ja'), '/ma "騎士のミンネ" <me>');
+    assert_eq(lang.translate('/ma "Knight\'s Minne" <me>'), '/ma "騎士のミンネ" <me>');
 end);
 
 test('the verb picks the table: a spell name sent as /ja is not translated', function()
     reset();
-    assert_eq(lang.translate('/ja "Cure" <me>', 'ja'), '/ja "Cure" <me>');
+    assert_eq(lang.translate('/ja "Cure" <me>'), '/ja "Cure" <me>');
 end);
 
 test('unknown names, empty resource names and unquoted commands fall back to English', function()
     reset();
-    assert_eq(lang.translate('/ma "Custom Spell" <me>', 'ja'), '/ma "Custom Spell" <me>');
-    assert_eq(lang.translate('/ja "Blank" <me>', 'ja'), '/ja "Blank" <me>');
-    assert_eq(lang.translate('/follow Tester', 'ja'), '/follow Tester');
-    assert_eq(lang.translate('/debuff 409', 'ja'), '/debuff 409');
+    assert_eq(lang.translate('/ma "Custom Spell" <me>'), '/ma "Custom Spell" <me>');
+    assert_eq(lang.translate('/ja "Blank" <me>'), '/ja "Blank" <me>');
+    assert_eq(lang.translate('/follow Tester'), '/follow Tester');
+    assert_eq(lang.translate('/debuff 409'), '/debuff 409');
 end);
 
-test('any language but Japanese sends English', function()
+test('gather alert phrase follows the client language', function()
     reset();
-    assert_eq(lang.translate('/ma "Cure" <me>', 'xx'), '/ma "Cure" <me>');
-end);
-
-test('gather alert phrase follows the language, English otherwise', function()
-    reset();
-    assert_eq(lang.gather('Cure', 'en'), 'Gather together.  Cure');
-    assert_eq(lang.gather('Cure', nil), 'Gather together.  Cure');
-    assert_eq(lang.gather('Cure', 'xx'), 'Gather together.  Cure');
     -- 集まってください。 in Shift-JIS, the game's chat encoding.
     local ja = '\x8f\x57\x82\xdc\x82\xc1\x82\xc4\x82\xad\x82\xbe\x82\xb3\x82\xa2\x81\x42  ';
     -- A bare name tries spells, then abilities, and stays English when unknown.
-    assert_eq(lang.gather('Cure', 'ja'), ja .. 'ケアル');
-    assert_eq(lang.gather('Troubadour', 'ja'), ja .. 'トルバドゥール');
-    assert_eq(lang.gather('Custom Spell', 'ja'), ja .. 'Custom Spell');
+    assert_eq(lang.gather('Cure'), ja .. 'ケアル');
+    assert_eq(lang.gather('Troubadour'), ja .. 'トルバドゥール');
+    assert_eq(lang.gather('Custom Spell'), ja .. 'Custom Spell');
+    lang.japanese = false;
+    assert_eq(lang.gather('Cure'), 'Gather together for Cure');
 end);

@@ -58,19 +58,6 @@ local function get_item_count(item_id)
     return total_count
 end
 
--- Canonical /item name for an entry: resolve from the item resource by ID so the
--- command matches the client's spelling even when our label string differs.
--- Falls back to the entry's display name if the resource lookup fails.
-local function item_command_name(entry)
-    local ok, res = pcall(function()
-        return AshitaCore:GetResourceManager():GetItemById(entry.item_id)
-    end)
-    if ok and res and res.Name and res.Name[1] and res.Name[1] ~= '' then
-        return res.Name[1]
-    end
-    return entry.item_name
-end
-
 -- Stat-down family Panacea clears (the >=128 tail of ERASABLE_DEBUFFS: Defense
 -- Down, Magic Def Down, base-stat downs, etc). Excludes Amnesia -- Panacea only
 -- "potentially" removes it, so firing on it risks looping the item stack.
@@ -124,7 +111,7 @@ local function try_item_removal(entry, settings)
     last_item_use = current_time
 
     return {
-        command     = string.format('/item "%s" <me>', item_command_name(entry)),
+        command     = string.format('/item "%s" <me>', common.item_name(entry.item_id, entry.item_name)),
         description = string.format('Using %s to remove %s', entry.item_name, entry.debuff_name),
     }
 end

@@ -30,13 +30,6 @@ local TRACKED = components.LIGHT_YELLOW
 -- width on the -/+ step buttons, so 90 is what leaves room for 3 digits.
 local INT_FIELD_WIDTH = 90
 
--- Command Language choices. Labels stay ASCII: the ImGui font may not carry
--- Japanese glyphs.
-local COMMAND_LANGUAGES = {
-    { code = 'en', label = 'English' },
-    { code = 'ja', label = 'Japanese' },
-}
-
 -- ============================================================================
 -- Visibility Control
 -- ============================================================================
@@ -594,29 +587,6 @@ function panel.render(addon_settings, save_settings)
                 if save_settings then save_settings() end
             end
             imgui.PopItemWidth()
-
-            -- Command Language (global). The client's language: game commands
-            -- carry spell/ability/item names in it (lib/core/lang.lua).
-            local current = addon_settings.command_language or 'en'
-            local preview = current
-            for _, option in ipairs(COMMAND_LANGUAGES) do
-                if option.code == current then preview = option.label end
-            end
-            imgui.SameLine(0, 20)
-            imgui.PushItemWidth(100)
-            if imgui.BeginCombo('Language', preview) then
-                for _, option in ipairs(COMMAND_LANGUAGES) do
-                    if imgui.Selectable(option.label, current == option.code) then
-                        addon_settings.command_language = option.code
-                        if save_settings then save_settings() end
-                    end
-                end
-                imgui.EndCombo()
-            end
-            imgui.PopItemWidth()
-            if imgui.IsItemHovered() then
-                imgui.SetTooltip(tooltips.command_language)
-            end
         end
     end
     imgui.End()
