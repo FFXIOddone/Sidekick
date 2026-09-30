@@ -1,10 +1,6 @@
 local fake = require('tests.ashita');
 local common = require('lib.core.common');
 
--- get_bt calls into FFXiMain through an ffi function pointer; the fake's is address 1,
--- a crash no pcall can catch. refresh_game_state samples <bt> movement, so stub it.
-require('lib.core.targets').get_bt = function() return nil; end
-
 -- Mute the "Now tracking" / "Stopped tracking" chat lines.
 local real_printf = common.printf;
 common.printf = function() end;
@@ -37,8 +33,8 @@ local function refresh()
     return reads;
 end
 
-local function track(index)
-    local e = fake.entity({ ServerId = SID, Name = 'Other', TargetIndex = index });
+local function track(index, sid)
+    local e = fake.entity({ ServerId = sid or SID, Name = 'Other', TargetIndex = index });
     fake.state.entities[index] = e;
     common.add_tracked_target(e, { main_level = 75 });
 end
@@ -82,6 +78,16 @@ test('a target whose slot now holds another player is found again by the scan', 
     refresh();
     local t = common.game_state.tracked[SID];
     assert_eq({ t.is_active, t.target_index }, { true, 0x402 });
+end);
+
+test('two missing tracked targets share one scan', function()
+    reset();
+    track(0x401);
+    track(0x403, SID + 1);
+    fake.state.entities[0x401] = nil;
+    fake.state.entities[0x403] = nil;
+    local n = refresh();
+    assert_eq(n > 0x800 and n < 0x1000, true, 'slot reads: ' .. n);
 end);
 
 for sid in pairs(common.get_tracked_targets()) do common.remove_tracked_target(sid); end

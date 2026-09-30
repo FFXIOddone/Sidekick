@@ -15,8 +15,9 @@ make check              # both; CI runs the same on Ubuntu and Windows
 
 `tests/ashita.lua` is a fake Ashita client. It defines the globals the game injects
 (`T{}`, `AshitaCore`, `ashita`, `GetEntity`, `GetPlayerEntity`, `struct`, `addon`) and the
-`chat`, `settings` and `imgui` modules, so the real `lib/` modules load unchanged. Every
-read comes from `fake.state`:
+`chat`, `settings` and `imgui` modules, so the real `lib/` modules load unchanged. It
+also stubs `targets.get_bt`, whose ffi call crashes against the fake. Every read comes
+from `fake.state`:
 
 | Field | What it feeds |
 |---|---|
@@ -37,9 +38,12 @@ A test edits that table and calls `fake.reset()` between cases.
   every `default_settings` key is read by the engine, and each job is registered under
   its own id in `Sidekick.lua`. A failure here is a wrong id in a job file, not a test bug.
 - `action_core_test.lua` drives `action_core.is_usable` through the fake client.
+- `automation_test.lua` holds `automation.is_ready()` 0.1 s ahead of the command throttle.
+- `snapshot_test.lua` pins every field of a party and an alliance member snapshot, the
+  fallback when a party-manager read throws, and the `/anon` patch-up.
 - `tracked_targets_test.lua` counts entity-slot reads per `refresh_game_state()`: a
-  tracked target is read at its cached index, and a miss rescans at most once a second.
-  It stubs `targets.get_bt`, whose ffi call crashes against the fake.
+  tracked target is read at its cached index, and misses share one rescan at most once
+  a second.
 
 ## Adding a test
 

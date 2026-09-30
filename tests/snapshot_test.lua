@@ -1,10 +1,6 @@
 local fake = require('tests.ashita');
 local common = require('lib.core.common');
 
--- get_bt calls into FFXiMain through an ffi function pointer; the fake's is address 1,
--- a crash no pcall can catch. refresh_game_state samples <bt> movement, so stub it.
-require('lib.core.targets').get_bt = function() return nil; end
-
 local function setup()
     fake.reset();
     fake.state.strings['jobs.names_abbr'] = { [3] = 'WHM', [4] = 'BLM', [5] = 'RDM' };
@@ -29,6 +25,18 @@ test('member snapshots carry every party-manager read', function()
     assert_eq({ a.name, a.server_id, a.hp, a.hpp, a.mp, a.mpp, a.tp, a.job_name, a.sub_job_name, a.main_level },
               { 'Ally', 0x500, 800, 50, 20, 10, 300, 'RDM', 'WHM', 70 });
     assert_eq(common.game_state.alliance_size, 1);
+end);
+
+test('a party-manager read that throws falls back to its default', function()
+    setup();
+    local ally = fake.state.party[6];
+    ally.hp, ally.name = nil, nil;
+    setmetatable(ally, { __index = function(_, k)
+        if k == 'hp' or k == 'name' then error('read failed'); end
+    end });
+    common.refresh_game_state();
+    local a = common.game_state.alliance[2][0];
+    assert_eq({ a.hp, a.name, a.mp }, { 0, '', 20 });
 end);
 
 test('an /anon player row takes job and level from the Player struct', function()

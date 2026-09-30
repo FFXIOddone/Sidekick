@@ -267,5 +267,9 @@ package.preload['imgui'] = function()
     return setmetatable({}, { __index = function() return function() return false; end; end });
 end
 
+-- get_bt calls into FFXiMain through an ffi function pointer; the fake's is address 1,
+-- a crash no pcall can catch. refresh_game_state samples <bt> movement, so stub it.
+require('lib.core.targets').get_bt = function() return nil; end
+
 fake.reset();
 return fake;

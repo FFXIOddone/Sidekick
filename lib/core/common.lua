@@ -3532,9 +3532,16 @@ local function safe_call(fallback, fn, ...)
     return fallback
 end
 
+-- Internal helper: an entity's {x, y, z}, or nil if any read fails.
+local function read_position(em, idx)
+    local ok_x, x = pcall(em.GetLocalPositionX, em, idx)
+    local ok_y, y = pcall(em.GetLocalPositionY, em, idx)
+    local ok_z, z = pcall(em.GetLocalPositionZ, em, idx)
+    if ok_x and ok_y and ok_z then return {x = x, y = y, z = z} end
+end
+
 -- Internal helper: build a member snapshot from a party manager flat index (0-17).
-local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
-    local pm = party_mgr
+local function build_member_snapshot(pm, entity_mgr, flat_index)
     local server_id  = safe_call(0,  pm.GetMemberServerId,    pm, flat_index)
     local name       = safe_call('', pm.GetMemberName,        pm, flat_index)
     local target_idx = safe_call(0,  pm.GetMemberTargetIndex, pm, flat_index)
@@ -3579,12 +3586,7 @@ local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
     local position = {x = 0, y = 0, z = 0}
     local entity_status = -1
     if entity_mgr and target_idx and target_idx > 0 then
-        local ok_x, px = pcall(entity_mgr.GetLocalPositionX, entity_mgr, target_idx)
-        local ok_y, py = pcall(entity_mgr.GetLocalPositionY, entity_mgr, target_idx)
-        local ok_z, pz = pcall(entity_mgr.GetLocalPositionZ, entity_mgr, target_idx)
-        if ok_x and ok_y and ok_z then
-            position = {x = px, y = py, z = pz}
-        end
+        position = read_position(entity_mgr, target_idx) or position
         local ent = GetEntity(target_idx)
         if ent then
             local ok_s, s = pcall(function() return ent.Status end)
@@ -3685,12 +3687,7 @@ function common.refresh_game_state()
                     if entity_mgr then
                         local pet_idx = pet_entity.TargetIndex
                         if pet_idx and pet_idx > 0 then
-                            local ok_px, px = pcall(entity_mgr.GetLocalPositionX, entity_mgr, pet_idx)
-                            local ok_py, py = pcall(entity_mgr.GetLocalPositionY, entity_mgr, pet_idx)
-                            local ok_pz, pz = pcall(entity_mgr.GetLocalPositionZ, entity_mgr, pet_idx)
-                            if ok_px and ok_py and ok_pz then
-                                member.pet_position = {x = px, y = py, z = pz}
-                            end
+                            member.pet_position = read_position(entity_mgr, pet_idx) or member.pet_position
                         end
                     end
                 end
@@ -3772,26 +3769,21 @@ function common.refresh_game_state()
     -- -----------------------------------------------------------------------
     -- A player keeps their target index until they zone, so the cached slot is checked
     -- first (one read). An empty or reassigned slot can't tell "out of range" from
-    -- "zoned and re-indexed", so every miss shares one GetServerId pass, at most once
-    -- per TRACKED_RESCAN_INTERVAL -- a target who zoned back in is picked up that late.
-    local misses = nil
-    for sid, tt in pairs(tracked_targets) do
-        local e = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
-        if not e or e.ServerId ~= sid then
-            misses = misses or {}
-            misses[sid] = tt
-        end
-    end
-    if misses and entity_mgr and state.refreshed_at - tracked_rescan_at >= TRACKED_RESCAN_INTERVAL then
-        tracked_rescan_at = state.refreshed_at
-        for idx = 1, 0x8FF do
-            local tt = misses[entity_mgr:GetServerId(idx)]
-            if tt then tt.target_index = idx end
-        end
-    end
-
+    -- "zoned and re-indexed", so a miss runs one GetServerId pass, at most once per
+    -- TRACKED_RESCAN_INTERVAL -- a target who zoned back in is picked up that late. The
+    -- pass re-indexes every tracked target, so later misses this refresh reuse it.
     for sid, tt in pairs(tracked_targets) do
         local entity = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
+        if (not entity or entity.ServerId ~= sid) and entity_mgr
+                and state.refreshed_at - tracked_rescan_at >= TRACKED_RESCAN_INTERVAL then
+            tracked_rescan_at = state.refreshed_at
+            -- Descending, so the lowest slot holding a server id wins.
+            for idx = 0x8FF, 1, -1 do
+                local t = tracked_targets[entity_mgr:GetServerId(idx)]
+                if t then t.target_index = idx end
+            end
+            entity = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
+        end
         if entity and entity.ServerId ~= sid then entity = nil end
 
         if entity and entity.TargetIndex and entity.TargetIndex > 0 then
@@ -3800,13 +3792,7 @@ function common.refresh_game_state()
             -- Position
             local position = {x = 0, y = 0, z = 0}
             if entity_mgr then
-                local tidx = entity.TargetIndex
-                local ok_x, px = pcall(entity_mgr.GetLocalPositionX, entity_mgr, tidx)
-                local ok_y, py = pcall(entity_mgr.GetLocalPositionY, entity_mgr, tidx)
-                local ok_z, pz = pcall(entity_mgr.GetLocalPositionZ, entity_mgr, tidx)
-                if ok_x and ok_y and ok_z then
-                    position = {x = px, y = py, z = pz}
-                end
+                position = read_position(entity_mgr, entity.TargetIndex) or position
             end
 
             -- Only HPPercent is available for non-party entities from GetEntity();
