@@ -1222,6 +1222,8 @@ ashita.events.register('command', 'sidekick_command', function(e)
         common.printf('  /sidekick toggle - Toggle automation on/off')
         common.printf('  /sidekick config - Show configuration UI')
         common.printf('  /sidekick widget - Toggle the floating profile/job + Start/Stop widget')
+        common.printf('  /sidekick profile - List settings profiles for the current job/subjob')
+        common.printf('  /sidekick profile <name> - Load a settings profile (\'default\' for the working copy)')
         common.printf('  /sidekick focus <index> - Set focus target (0-5, party member index)')
         common.printf('  /sidekick focus clear - Clear focus target')
         common.printf('  /sidekick addtarget - Track current target for automation')
@@ -1261,6 +1263,42 @@ ashita.events.register('command', 'sidekick_command', function(e)
     elseif cmd == 'widget' then
         -- Persisted by the unload handler, same as /sidekick config.
         ui_config.toggle_widget()
+
+    elseif cmd == 'profile' then
+        -- Same ops and ctx the profile popup uses (lib/ui/config.lua), so a
+        -- command load parks the Default working copy, backfills newer keys and
+        -- refreshes session mirrors exactly like a click in the list.
+        local ops = ui_config.profile_ops
+        local ctx = { settings = addon_settings, job_def = job_def,
+            save_callback = function() settings.save() end }
+        -- Profile names may contain spaces: everything after the subcommand is the name.
+        local name = table.concat(args, ' ', 3)
+
+        if not job_def then
+            common.errorf('No job loaded; profiles are per job/subjob combo.')
+        elseif common.is_loading() then
+            -- Zoning blanks the job to UNK/None; every branch below would key
+            -- (and on-demand create) profiles['UNK/None'].
+            common.errorf('Zoning; try again once loaded.')
+        elseif name == '' then
+            local names = ops.names(ctx)
+            local active = ops.active(ctx) or 'Default'
+            common.printf('Profiles for %s (active: %s): Default%s',
+                common.get_job_combo(), active,
+                #names > 0 and (', ' .. table.concat(names, ', ')) or '')
+        elseif name:lower() == 'default' then
+            ops.load_default(ctx)
+            common.printf('Profile: Default (working copy).')
+        else
+            local stored = ops.find(ctx, name)
+            if stored then
+                ops.load(ctx, stored)
+                common.printf('Profile loaded: %s', stored)
+            else
+                common.errorf('No profile named "%s" for %s. /sidekick profile lists them.',
+                    name, common.get_job_combo())
+            end
+        end
 
     elseif cmd == 'focus' then
         local subcmd = args[3] and args[3]:lower()

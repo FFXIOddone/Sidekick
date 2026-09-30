@@ -398,6 +398,12 @@ local function profile_list(settings)
     return settings.profiles[combo]
 end
 
+-- Read-only view of the same list for lookups and listings: a miss must not
+-- leave an empty profiles[combo] entry behind for the next save to write.
+local function profile_peek(settings)
+    return settings.profiles and settings.profiles[common.get_job_combo()] or {}
+end
+
 -- Snapshot live settings (minus excluded keys) for storing under a name.
 local function profile_snapshot(settings)
     local snap = T{}
@@ -468,11 +474,15 @@ end
 -- the ctx object components already use (settings / job_def / save_callback).
 local profile_ops = {}
 
--- Exposed so the popup renderer can hide the parked slot from the named list.
-profile_ops.DEFAULT_SLOT = DEFAULT_SLOT
-
-function profile_ops.list(ctx)
-    return profile_list(ctx.settings)
+-- Named profiles for the current combo, sorted case-insensitively, Default
+-- slot excluded. Shared by the popup list and /sidekick profile.
+function profile_ops.names(ctx)
+    local names = {}
+    for stored in pairs(profile_peek(ctx.settings)) do
+        if stored ~= DEFAULT_SLOT then table.insert(names, stored) end
+    end
+    table.sort(names, function(a, b) return a:lower() < b:lower() end)
+    return names
 end
 
 -- Active profile validated against the current combo's list. active_profile is
@@ -480,7 +490,7 @@ end
 -- loaded on another combo must read as Default here, not as active.
 function profile_ops.active(ctx)
     local active = ctx.settings.active_profile
-    if active and profile_list(ctx.settings)[active] then
+    if active and profile_peek(ctx.settings)[active] then
         return active
     end
     return nil
@@ -511,6 +521,24 @@ function profile_ops.save_as(ctx, name)
     profile_list(ctx.settings)[name] = profile_snapshot(ctx.settings)
     ctx.settings.active_profile = name
     if ctx.save_callback then ctx.save_callback() end
+end
+
+-- Lookup of a named profile for the current combo, for the /sidekick profile
+-- command. Exact match first: save does not dedupe on case, so 'Tank' and
+-- 'tank' can coexist and pairs order must not pick between them. Then
+-- case-insensitive (chat input is not case-exact). Returns the stored name,
+-- or nil. Never matches the parked Default slot.
+function profile_ops.find(ctx, name)
+    if not name or name == '' then return nil end
+    local list = profile_peek(ctx.settings)
+    if list[name] and name ~= DEFAULT_SLOT then return name end
+    local wanted = name:lower()
+    for stored in pairs(list) do
+        if stored ~= DEFAULT_SLOT and stored:lower() == wanted then
+            return stored
+        end
+    end
+    return nil
 end
 
 function profile_ops.load(ctx, name)
@@ -575,6 +603,10 @@ function profile_ops.delete(ctx, name)
     if ctx.save_callback then ctx.save_callback() end
 end
 
+-- Exposed for the /sidekick profile command (Sidekick.lua), which builds the
+-- same ctx the popup uses and calls list / find / load / load_default directly.
+ui_config.profile_ops = profile_ops
+
 -- Profile + job line and the Start/Stop button + status line. Shared by the
 -- config window and the floating widget (/sk widget); the widget takes them
 -- over while it is open so they only ever render once per frame.
@@ -595,7 +627,9 @@ local function render_header(ctx)
         end
         -- Settings profiles: button labeled with the active profile, opens
         -- the save/load panel (rendering in components, ops defined above).
-        -- Leads the job line, fixed at the Start/Stop button width.
+        -- Leads the job line, fixed at the Start/Stop button width. Greyed and
+        -- inert while zoning (see render_profile_button) rather than hidden, so
+        -- the job text does not shift left on the widget.
         ui.render_profile_button(ctx, profile_ops)
         imgui.SameLine()
         -- Center the job text on the button row (else it top-aligns).
@@ -836,9 +870,16 @@ function ui_config.get_party_buff_gates()
     return party_buff_gates
 end
 
-function ui_config.get_entrust_config()
+-- Read the persisted keys, not the entrust_*_name UI mirrors: those are seeded
+-- only by ui_config.render, which returns early while the window is closed or
+-- the player is loading, and profile_reset_session_state nils them. Reading
+-- the mirrors silenced Entrust in a fresh session until the window was opened
+-- once, and after any /sidekick profile load with the window closed.
+function ui_config.get_entrust_config(settings)
+    local target_name = settings.entrust_target
+    local spell_name = settings.entrust_spell
     -- Return nil if entrust target or spell is None
-    if not entrust_target_name or not entrust_spell_name then
+    if not target_name or not spell_name then
         return nil
     end
     
@@ -851,7 +892,7 @@ function ui_config.get_entrust_config()
     local target_index = nil
     for i = 1, 5 do
         local member_name = common.get_party_member_name(i)
-        if member_name and member_name == entrust_target_name then
+        if member_name and member_name == target_name then
             target_index = i
             break
         end
@@ -864,8 +905,8 @@ function ui_config.get_entrust_config()
     
     return {
         target_index = target_index,         -- 1-5 for P1-P5
-        target_name = entrust_target_name,   -- Character name
-        spell_name = entrust_spell_name,     -- Spell name like "Indi-Haste"
+        target_name = target_name,           -- Character name
+        spell_name = spell_name,             -- Spell name like "Indi-Haste"
     }
 end
 
