@@ -211,6 +211,9 @@ local non_combat_zone_ids = {
     284, -- Celennia Memorial Library
 }
 
+-- Event system pointer (code from Thorny). Scanned once: the address can't move while the game runs.
+local event_system_ptr = ashita.memory.find('FFXiMain.dll', 0, 'A0????????84C0741AA1????????85C0741166A1????????663B05????????0F94C0C3', 0, 0) or 0
+
 -- Helper function to get current zone ID
 function common.get_zone_id()
     local ok, zone_id = pcall(function()
@@ -549,12 +552,9 @@ function common.can_attack()
         end
     end
     
-    -- Event system pointer (code from Thorny)
-    local pEventSystem = ashita.memory.find('FFXiMain.dll', 0, "A0????????84C0741AA1????????85C0741166A1????????663B05????????0F94C0C3", 0, 0)
-
     -- Check if event system is currently active (cutscene, dialog, etc.)
-    if pEventSystem ~= 0 then
-        local ptr = ashita.memory.read_uint32(pEventSystem + 1)
+    if event_system_ptr ~= 0 then
+        local ptr = ashita.memory.read_uint32(event_system_ptr + 1)
         if ptr ~= 0 and ashita.memory.read_uint8(ptr) == 1 then
             return false  -- Cannot attack during events
         end
