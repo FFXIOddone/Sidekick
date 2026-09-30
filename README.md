@@ -86,6 +86,7 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 - **Barrier Tusk stops recasting itself**: it now watches for Physical Shield instead of Phalanx, so it is only cast once it wears off. — **Camuel**, **Stieg**
 - **Charmed members are left alone**: while someone is Charmed they are skipped for heals, buffs, cleanses, wakes and AOE counts, instead of wasting casts that can't land. — **Yumia**
 - **Entrust with the config window closed**: Entrust now fires in a fresh session and after a `/sk profile` load without the window ever being opened.
+- **Perpetuance works under Light Arts**: it no longer waits for Addendum: White, and no longer holds back an Accession assigned to the same spell. — **Benthere**
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 

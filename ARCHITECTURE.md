@@ -996,6 +996,10 @@ Two rules are easy to get wrong:
 - **The field name, not the command text, picks the recast table.** `is_usable` no longer
   sniffs the command for `/ma`, so a `/ma` ability given a `recast_id` will silently read
   the wrong timer, and one given neither id is never cooldown-gated at all.
+- **An Arts-gated JA takes both stance buffs in `requires_buff`.** `abilities.sql` `addType`
+  16 (Light Arts) or 32 (Dark Arts) passes under the stance or its Addendum
+  (`charutils::CheckAbilityAddtype`), so the field is `{358, 401}` or `{359, 402}`, never
+  the Addendum alone. `jobs_test.lua` checks it against `add_type` in `tests/data/abilities.lua`.
 
 Item/ammo tier-spec tables (BST `PET_FOOD`, NIN `SHURIKENS`, PUP `OILS`, …) are not
 abilities — their entries keep a bare `id`, which is an item id.
