@@ -44,6 +44,67 @@ local HEADER_COLOR_NORMAL = { 0.2, 0.2, 0.2, 0.31 }
 local HEADER_COLOR_HOVERED = { 0.2, 0.2, 0.2, 0.45 }
 local HEADER_COLOR_ACTIVE = { 0.2, 0.2, 0.2, 0.65 }
 
+-- User-set accents are optional; an absent or malformed value preserves the
+-- current ImGui theme and the original section-header colors.
+local function normalize_rgba(color)
+    if type(color) ~= 'table' then return nil end
+    local normalized = {}
+    for i = 1, 4 do
+        local value = tonumber(color[i])
+        if not value or value ~= value or value == math.huge or value == -math.huge then return nil end
+        normalized[i] = math.max(0, math.min(1, value))
+    end
+    return normalized
+end
+
+local function accent_with_alpha(color, scale)
+    return { color[1], color[2], color[3], color[4] * scale }
+end
+
+function ui_components.get_ui_accent_color(settings)
+    return settings and normalize_rgba(settings.ui_accent_color) or nil
+end
+
+function ui_components.set_ui_accent_color(settings, color)
+    if not settings then return false end
+    local normalized = normalize_rgba(color)
+    if not normalized then return false end
+    settings.ui_accent_color = normalized
+    return true
+end
+
+-- Called by the config and widget windows only when the player has chosen an
+-- accent. With no setting, none of Sidekick's existing ImGui colors are pushed.
+function ui_components.push_ui_accent(settings)
+    local accent = ui_components.get_ui_accent_color(settings)
+    if not accent then return 0 end
+
+    local colors = {
+        { ImGuiCol_Header, accent_with_alpha(accent, 0.18) },
+        { ImGuiCol_HeaderHovered, accent_with_alpha(accent, 0.36) },
+        { ImGuiCol_HeaderActive, accent_with_alpha(accent, 0.54) },
+        { ImGuiCol_Button, accent_with_alpha(accent, 0.20) },
+        { ImGuiCol_ButtonHovered, accent_with_alpha(accent, 0.42) },
+        { ImGuiCol_ButtonActive, accent_with_alpha(accent, 0.64) },
+        { ImGuiCol_Tab, accent_with_alpha(accent, 0.20) },
+        { ImGuiCol_TabHovered, accent_with_alpha(accent, 0.42) },
+        { ImGuiCol_TabActive, accent_with_alpha(accent, 0.64) },
+        { ImGuiCol_TabUnfocused, accent_with_alpha(accent, 0.18) },
+        { ImGuiCol_TabUnfocusedActive, accent_with_alpha(accent, 0.50) },
+        { ImGuiCol_CheckMark, accent },
+        { ImGuiCol_SliderGrab, accent_with_alpha(accent, 0.64) },
+        { ImGuiCol_SliderGrabActive, accent },
+    }
+    for _, entry in ipairs(colors) do imgui.PushStyleColor(entry[1], entry[2]) end
+    return #colors
+end
+
+function ui_components.pop_ui_accent(color_count)
+    if color_count and color_count > 0 then
+        imgui.PopStyleColor(color_count)
+    end
+end
+
 -- Color Constants - Tabs (disabled sections only; enabled tabs keep the theme's
 -- own ImGuiCol_Tab* colors). A section's enable checkbox lives inside its tab
 -- body, so dimming is the only thing that shows enable state without opening it.
@@ -2451,9 +2512,10 @@ local function begin_header_section(ctx, label, setting_name, default_value, too
         end
     end
     imgui.SameLine()
-    imgui.PushStyleColor(ImGuiCol_Header, HEADER_COLOR_NORMAL)
-    imgui.PushStyleColor(ImGuiCol_HeaderHovered, HEADER_COLOR_HOVERED)
-    imgui.PushStyleColor(ImGuiCol_HeaderActive, HEADER_COLOR_ACTIVE)
+    local accent = ui_components.get_ui_accent_color(ctx.settings)
+    imgui.PushStyleColor(ImGuiCol_Header, accent and accent_with_alpha(accent, 0.18) or HEADER_COLOR_NORMAL)
+    imgui.PushStyleColor(ImGuiCol_HeaderHovered, accent and accent_with_alpha(accent, 0.36) or HEADER_COLOR_HOVERED)
+    imgui.PushStyleColor(ImGuiCol_HeaderActive, accent and accent_with_alpha(accent, 0.54) or HEADER_COLOR_ACTIVE)
     local is_open = imgui.CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)
     imgui.PopStyleColor(3)
     ui_components.item_tooltip(tooltip)

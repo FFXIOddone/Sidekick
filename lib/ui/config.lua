@@ -381,6 +381,7 @@ local PROFILE_EXCLUDED_KEYS = {
     window_size_mode = true,
     display_mode = true,
     ui_opacity = true,
+    ui_accent_color = true,
     ui_open = true,
     widget_open = true,
 }
@@ -846,6 +847,7 @@ function ui_config.render_widget(settings, job_def, callback)
         job_def = job_def,
     }
 
+    local accent_colors = ui.push_ui_accent(settings)
     imgui.PushStyleVar(ImGuiStyleVar_Alpha, (settings.ui_opacity or 100) / 100)
     -- p_open must be a TABLE: Ashita's binding ignores the flags argument when it is nil,
     -- which is what put a title bar + [X] on this window. NoTitleBar means the [X] never
@@ -860,6 +862,7 @@ function ui_config.render_widget(settings, job_def, callback)
     end
     imgui.End()
     imgui.PopStyleVar()
+    ui.pop_ui_accent(accent_colors)
 end
 
 function ui_config.get_party_buffs()
@@ -1065,6 +1068,7 @@ function ui_config.render(settings, job_def, callback)
     -- the [X] was clicked. Treat collapse as "still open, just skip content" and
     -- only close on the [X] (is_open flips to false). Always call End() to match
     -- Begin() per imgui rules.
+    local accent_colors = ui.push_ui_accent(settings)
     imgui.PushStyleVar(ImGuiStyleVar_Alpha, (settings.ui_opacity or 100) / 100)
     if imgui.Begin(window_title, is_open, window_flags) then
 
@@ -1785,6 +1789,7 @@ function ui_config.render(settings, job_def, callback)
     end
     imgui.End()
     imgui.PopStyleVar()
+    ui.pop_ui_accent(accent_colors)
 
     -- Close only when the [X] was clicked (imgui sets is_open to false). A mere
     -- collapse leaves is_open true, so the window stays open.
