@@ -157,6 +157,11 @@ local PENDING_BUFF_TIMEOUT = 10.0  -- Seconds before pending buff expires
 -- main_level is populated once the 0x0C9 check-response packet is received.
 local tracked_targets = {}
 
+-- os.clock() of the last full entity scan for tracked targets whose cached target_index
+-- missed (see refresh_game_state); misses rescan at most once per interval.
+local tracked_rescan_at = 0
+local TRACKED_RESCAN_INTERVAL = 1.0
+
 -- Pending check requests: server_id -> timestamp (waiting for 0x0C9 response)
 local pending_checks = {}
 local PENDING_CHECK_TIMEOUT = 10.0
@@ -3827,17 +3832,29 @@ function common.refresh_game_state()
     -- -----------------------------------------------------------------------
     -- Refresh tracked targets (outside-party players)
     -- -----------------------------------------------------------------------
+    -- A player keeps their target index until they zone, so the cached slot is checked
+    -- first (one read). An empty or reassigned slot can't tell "out of range" from
+    -- "zoned and re-indexed", so every miss shares one GetServerId pass, at most once
+    -- per TRACKED_RESCAN_INTERVAL -- a target who zoned back in is picked up that late.
+    local misses = nil
     for sid, tt in pairs(tracked_targets) do
-        local entity = nil
-        -- Re-resolve entity by server_id (target_index may change across zones)
-        for idx = 0, 2302 do
-            local e = GetEntity(idx)
-            if e and e.ServerId == sid then
-                entity = e
-                tt.target_index = e.TargetIndex or 0
-                break
-            end
+        local e = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
+        if not e or e.ServerId ~= sid then
+            misses = misses or {}
+            misses[sid] = tt
         end
+    end
+    if misses and entity_mgr and state.refreshed_at - tracked_rescan_at >= TRACKED_RESCAN_INTERVAL then
+        tracked_rescan_at = state.refreshed_at
+        for idx = 1, 0x8FF do
+            local tt = misses[entity_mgr:GetServerId(idx)]
+            if tt then tt.target_index = idx end
+        end
+    end
+
+    for sid, tt in pairs(tracked_targets) do
+        local entity = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
+        if entity and entity.ServerId ~= sid then entity = nil end
 
         if entity and entity.TargetIndex and entity.TargetIndex > 0 then
             local hpp = entity.HPPercent or 0

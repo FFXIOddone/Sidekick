@@ -37,6 +37,9 @@ A test edits that table and calls `fake.reset()` between cases.
   every `default_settings` key is read by the engine, and each job is registered under
   its own id in `Sidekick.lua`. A failure here is a wrong id in a job file, not a test bug.
 - `action_core_test.lua` drives `action_core.is_usable` through the fake client.
+- `tracked_targets_test.lua` counts entity-slot reads per `refresh_game_state()`: a
+  tracked target is read at its cached index, and a miss rescans at most once a second.
+  It stubs `targets.get_bt`, whose ffi call crashes against the fake.
 
 ## Adding a test
 
