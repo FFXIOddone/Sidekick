@@ -69,6 +69,14 @@ function automation.notify_action_finished(is_spell_finish)
     last_command_time = math.max(last_command_time, finish_stamp)
 end
 
+-- True from 0.1s before the throttle opens. The tick loop refreshes game_state every
+-- frame while this holds and at 10Hz otherwise, so the engine never decides on a
+-- skipped snapshot. The lead covers the throttle opening between this check and
+-- execute_priority_actions' own, later in the same frame.
+function automation.is_ready()
+    return os.clock() - last_command_time >= command_throttle - 0.1
+end
+
 --[[
     Action Priority System
 ]]--

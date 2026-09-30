@@ -70,6 +70,7 @@ local last_job_id = nil
 local last_sub_job_id = nil
 local last_level = nil
 local last_unsupported_warning = nil  -- Track last unsupported job warning to prevent spam
+local zoned = true  -- automation_tick must refresh game_state before trusting it (see there)
 
 -- Settings file path
 local default_settings = T{
@@ -543,18 +544,26 @@ local function automation_tick()
         return
     end
 
-    -- Gather player + party snapshot once for this tick.
-    -- All action modules can read common.game_state.player / common.game_state.party[1..5]
-    -- instead of making individual API calls each cycle.
-    -- Must run BEFORE the mount guard so that is_mounted is refreshed every tick;
-    -- otherwise once set to true it would never be cleared (the early return prevented
-    -- refresh_game_state from executing).
-    common.refresh_game_state()
-
     -- Player has not fully loaded in yet (job reads as NON/NON).
     -- Skip all automation until the server sends valid job data.
     if common.is_loading() then
+        zoned = true
         return
+    end
+
+    -- Gather player + party snapshot for this tick.
+    -- All action modules can read common.game_state.player / common.game_state.party[1..5]
+    -- instead of making individual API calls each cycle.
+    -- Every frame while the engine may act, else 10Hz: with the throttle closed the
+    -- snapshot only feeds the guards below. Forced on the first frame after loading:
+    -- the panel and follow_tick refresh on the loading screen too, and that snapshot
+    -- (blank party, HP 0 -> is_dead) must never be reused.
+    -- Must run BEFORE the mount guard so that is_mounted is refreshed every tick;
+    -- otherwise once set to true it would never be cleared (the early return prevented
+    -- refresh_game_state from executing).
+    if zoned or automation.is_ready() or os.clock() - common.game_state.refreshed_at > 0.1 then
+        common.refresh_game_state()
+        zoned = false
     end
 
     -- Point auto_element-tagged groups (RDM enspells, SCH storms) at the tier matching

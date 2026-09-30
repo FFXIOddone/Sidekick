@@ -135,9 +135,12 @@ lib/
 
 ```
 1. Guard: addon loaded? automation enabled? job_def loaded?
-2. Refresh game_state (party HP, buffs, server IDs, pet info)
+2. Guard: is_loading()
+3. Refresh game_state (party HP, buffs, server IDs, pet info) -- every frame from
+   0.1 s before the throttle opens (automation.is_ready()), else at 10 Hz, since a
+   closed throttle means the snapshot only feeds the guards; forced on the first
+   frame after loading so a loading-screen snapshot is never reused
    -- must precede the mount guard, else is_mounted would never clear
-3. Guard: is_loading()
 4. afk.update() → Guard: afk.is_sleeping() -- AFK Sleep dead-man's switch; after
    is_loading so zone garbage is never sampled, before the guards below so the
    timer keeps running (and can wake) while mounted/dead/casting
