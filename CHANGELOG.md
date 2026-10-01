@@ -5,6 +5,11 @@ All notable changes to Sidekick will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-10-01
+
+### Fixed
+- **Perpetuance no longer needs Addendum: White** (`lib/jobs/scholar.lua`, `tests/stratagem_test.lua`, `tests/jobs_test.lua`, `tools/gen_resources.lua`): the stratagem's `requires_buff` listed only Addendum: White (401), so under plain Light Arts (358) `check_stratagem` treated it as unable to fire and the spell was cast without it, or skipped with **Hold for Stratagem** on. It now accepts either stance, like every other Light Arts stratagem. The same entry is why Accession looked like it needed Addendum: White too: Accession's own prerequisite was already correct, but `check_stratagem` works through a spell's assigned stratagems in definition order and gives up at the first one that cannot fire, so a spell with Perpetuance and Accession both assigned lost both. The server gates all of these on one `abilities.sql` column, `addType` (16 Light Arts, 32 Dark Arts), which passes under the stance or its Addendum; `tools/gen_resources.lua` now writes it into `tests/data/abilities.lua` as `add_type`, and `jobs_test.lua` fails any Arts-gated ability whose `requires_buff` leaves one of the two out. Thanks to **Benthere** for reporting it (#284).
+
 ## [2.8.0] - 2026-09-09
 
 ### Added
@@ -88,7 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Entrust silent with the config window closed** (`get_entrust_config`): it read the config window's own target/spell mirrors, which only the window's render seeds and every profile load clears, so Entrust never fired until the window was opened once. It now reads `entrust_target` / `entrust_spell` from settings directly.
 - **Profile lookups no longer create entries**: an unknown name in `/sk profile`, or the Profile button label drawn each frame, left an empty `profiles[combo]` table behind for the next save to write. Read paths now use a non-creating view.
 - **Profile button disabled while zoning**: the widget's Profile button stayed clickable during a zone and could save or load under `UNK/None`. It is now greyed and inert, keeping its place so the job line does not shift.
-- **Perpetuance no longer needs Addendum: White** (`lib/jobs/scholar.lua`, `tests/stratagem_test.lua`, `tests/jobs_test.lua`, `tools/gen_resources.lua`): the stratagem's `requires_buff` listed only Addendum: White (401), so under plain Light Arts (358) `check_stratagem` treated it as unable to fire and the spell was cast without it, or skipped with **Hold for Stratagem** on. It now accepts either stance, like every other Light Arts stratagem. The same entry is why Accession looked like it needed Addendum: White too: Accession's own prerequisite was already correct, but `check_stratagem` works through a spell's assigned stratagems in definition order and gives up at the first one that cannot fire, so a spell with Perpetuance and Accession both assigned lost both. The server gates all of these on one `abilities.sql` column, `addType` (16 Light Arts, 32 Dark Arts), which passes under the stance or its Addendum; `tools/gen_resources.lua` now writes it into `tests/data/abilities.lua` as `add_type`, and `jobs_test.lua` fails any Arts-gated ability whose `requires_buff` leaves one of the two out. Thanks to **Benthere** for reporting it (#284).
 
 ## [2.7.0] - 2026-08-17
 
