@@ -271,9 +271,7 @@ function panel.render(addon_settings, save_settings)
     if not panel_visible then return end
 
     -- Refresh if stale (automation tick may have already done it this frame)
-    if os.clock() - common.game_state.refreshed_at > 0.1 then
-        common.refresh_game_state()
-    end
+    common.refresh_game_state_if_stale()
 
     local gs = common.game_state
 

@@ -157,6 +157,11 @@ local PENDING_BUFF_TIMEOUT = 10.0  -- Seconds before pending buff expires
 -- main_level is populated once the 0x0C9 check-response packet is received.
 local tracked_targets = {}
 
+-- os.clock() of the last full entity scan for tracked targets whose cached target_index
+-- missed (see refresh_game_state); misses rescan at most once per interval.
+local tracked_rescan_at = 0
+local TRACKED_RESCAN_INTERVAL = 1.0
+
 -- Pending check requests: server_id -> timestamp (waiting for 0x0C9 response)
 local pending_checks = {}
 local PENDING_CHECK_TIMEOUT = 10.0
@@ -205,6 +210,9 @@ local non_combat_zone_ids = {
     251, -- Hall of the Gods
     284, -- Celennia Memorial Library
 }
+
+-- Event system pointer (code from Thorny). Scanned once: the address can't move while the game runs.
+local event_system_ptr = ashita.memory.find('FFXiMain.dll', 0, 'A0????????84C0741AA1????????85C0741166A1????????663B05????????0F94C0C3', 0, 0) or 0
 
 -- Helper function to get current zone ID
 function common.get_zone_id()
@@ -544,12 +552,9 @@ function common.can_attack()
         end
     end
     
-    -- Event system pointer (code from Thorny)
-    local pEventSystem = ashita.memory.find('FFXiMain.dll', 0, "A0????????84C0741AA1????????85C0741166A1????????663B05????????0F94C0C3", 0, 0)
-
     -- Check if event system is currently active (cutscene, dialog, etc.)
-    if pEventSystem ~= 0 then
-        local ptr = ashita.memory.read_uint32(pEventSystem + 1)
+    if event_system_ptr ~= 0 then
+        local ptr = ashita.memory.read_uint32(event_system_ptr + 1)
         if ptr ~= 0 and ashita.memory.read_uint8(ptr) == 1 then
             return false  -- Cannot attack during events
         end
@@ -1035,7 +1040,17 @@ end
 -- Count how many of the given items the player holds across every
 -- equip-eligible container. spec is a list of tier entries. Returns a total
 -- count (0 if none / inventory not loaded).
+-- Remembered per spec for 0.5s: the config window asks once or twice per item-gated
+-- row per frame, and each answer walks every slot of nine containers. UI-only --
+-- automation gates on find_equippable_item, which is never cached. Weak keys let a
+-- reloaded job definition drop its spec tables.
+local item_count_cache = setmetatable({}, { __mode = 'k' })
+
 function common.count_equippable_items(spec)
+    local now = os.clock()
+    local hit = item_count_cache[spec]
+    if hit and now - hit.at < 0.5 then return hit.count end
+
     local inventory = get_inventory()
     if not inventory then return 0 end
 
@@ -1053,6 +1068,7 @@ function common.count_equippable_items(spec)
             end
         end
     end
+    item_count_cache[spec] = { at = now, count = total }
     return total
 end
 
@@ -1186,63 +1202,6 @@ function common.get_entity_manager()
     end
     
     return entity_mgr
-end
-
--- Resolve a server ID to an entity name using fast index derivation.
--- Uses the same shortcut that parse_packets.GetIndexFromId does for NPCs/Trusts
--- (bit-mask on the lower 12 bits) and falls back to a party/tracked lookup,
--- avoiding a full O(2304) entity scan in the common case.
--- Args:   server_id (number) - Entity server ID
--- Returns: string - Entity name or 'Unknown'
-function common.resolve_entity_name(server_id)
-    if not server_id or server_id == 0 then return 'Unknown' end
-    local entMgr = AshitaCore:GetMemoryManager():GetEntity()
-    if not entMgr then return 'Unknown' end
-
-    -- Fast path for NPCs/Trusts (server_id has 0x1000000 bit set)
-    if bit.band(server_id, 0x1000000) ~= 0 then
-        local index = bit.band(server_id, 0xFFF)
-        if index >= 0x900 then index = index - 0x100 end
-        if index < 0x900 and entMgr:GetServerId(index) == server_id then
-            local name = entMgr:GetName(index)
-            if name and name ~= '' then return name end
-        end
-    end
-
-    -- Try party members (indices are low, fast check)
-    local party = common.get_party()
-    if party then
-        for i = 0, 5 do
-            if party:GetMemberIsActive(i) == 1 and party:GetMemberServerId(i) == server_id then
-                local ti = party:GetMemberTargetIndex(i)
-                if ti and ti > 0 then
-                    local name = entMgr:GetName(ti)
-                    if name and name ~= '' then return name end
-                end
-            end
-        end
-    end
-
-    -- Try tracked targets
-    local tt = tracked_targets[server_id]
-    if tt then
-        if tt.name and tt.name ~= '' then return tt.name end
-        if tt.target_index and tt.target_index > 0 then
-            local name = entMgr:GetName(tt.target_index)
-            if name and name ~= '' then return name end
-        end
-    end
-
-    -- Fallback: full entity scan (rare, only for unknown entities)
-    for idx = 1, 0x8FF do
-        if entMgr:GetServerId(idx) == server_id then
-            local name = entMgr:GetName(idx)
-            if name and name ~= '' then return name end
-            break
-        end
-    end
-
-    return 'Unknown'
 end
 
 -- Get player's current target server ID
@@ -3589,23 +3548,34 @@ local function read_alliance_buffs(server_id)
     return trust_buffs[server_id] or {}
 end
 
+-- Internal helper: pcall(fn, ...) returning fallback on error or nil. Pass the method
+-- and its object (safe_call(0, pm.GetMemberHP, pm, i) == pm:GetMemberHP(i)) rather
+-- than a closure: the snapshot runs every frame and a closure per read is GC churn.
+local function safe_call(fallback, fn, ...)
+    local ok, val = pcall(fn, ...)
+    if ok and val ~= nil then return val end
+    return fallback
+end
+
+-- Internal helper: an entity's {x, y, z}, or nil if any read fails.
+local function read_position(em, idx)
+    local ok_x, x = pcall(em.GetLocalPositionX, em, idx)
+    local ok_y, y = pcall(em.GetLocalPositionY, em, idx)
+    local ok_z, z = pcall(em.GetLocalPositionZ, em, idx)
+    if ok_x and ok_y and ok_z then return {x = x, y = y, z = z} end
+end
+
 -- Internal helper: build a member snapshot from a party manager flat index (0-17).
-local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
-    local function safe_get(fn, fallback)
-        local ok, val = pcall(fn)
-        if ok and val ~= nil then return val end
-        return fallback
-    end
+local function build_member_snapshot(pm, entity_mgr, flat_index)
+    local server_id  = safe_call(0,  pm.GetMemberServerId,    pm, flat_index)
+    local name       = safe_call('', pm.GetMemberName,        pm, flat_index)
+    local target_idx = safe_call(0,  pm.GetMemberTargetIndex, pm, flat_index)
 
-    local server_id  = safe_get(function() return party_mgr:GetMemberServerId(flat_index)     end, 0)
-    local name       = safe_get(function() return party_mgr:GetMemberName(flat_index)         end, '')
-    local target_idx = safe_get(function() return party_mgr:GetMemberTargetIndex(flat_index)  end, 0)
-
-    local hp  = safe_get(function() return party_mgr:GetMemberHP(flat_index)           end, 0)
-    local hpp = safe_get(function() return party_mgr:GetMemberHPPercent(flat_index)    end, 0)
-    local mp  = safe_get(function() return party_mgr:GetMemberMP(flat_index)           end, 0)
-    local mpp = safe_get(function() return party_mgr:GetMemberMPPercent(flat_index)    end, 0)
-    local tp  = safe_get(function() return party_mgr:GetMemberTP(flat_index)           end, 0)
+    local hp  = safe_call(0, pm.GetMemberHP,         pm, flat_index)
+    local hpp = safe_call(0, pm.GetMemberHPPercent,  pm, flat_index)
+    local mp  = safe_call(0, pm.GetMemberMP,         pm, flat_index)
+    local mpp = safe_call(0, pm.GetMemberMPPercent,  pm, flat_index)
+    local tp  = safe_call(0, pm.GetMemberTP,         pm, flat_index)
 
     if not member_max_stats[server_id] then
         member_max_stats[server_id] = {}
@@ -3615,41 +3585,33 @@ local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
     local max_hp = member_max_stats[server_id].max_hp or 0
     local max_mp = member_max_stats[server_id].max_mp or 0
 
-    local job        = safe_get(function() return party_mgr:GetMemberMainJob(flat_index)      end, 0)
-    local sub_job    = safe_get(function() return party_mgr:GetMemberSubJob(flat_index)       end, 0)
-    local main_level = safe_get(function() return party_mgr:GetMemberMainJobLevel(flat_index) end, 0)
-    local sub_level  = safe_get(function() return party_mgr:GetMemberSubJobLevel(flat_index)  end, 0)
+    local job        = safe_call(0, pm.GetMemberMainJob,      pm, flat_index)
+    local sub_job    = safe_call(0, pm.GetMemberSubJob,       pm, flat_index)
+    local main_level = safe_call(0, pm.GetMemberMainJobLevel, pm, flat_index)
+    local sub_level  = safe_call(0, pm.GetMemberSubJobLevel,  pm, flat_index)
 
     -- /anon: the server only writes job/level into the party-list packet when the
     -- character is not anonymous (0x0dd_group_list.cpp), so our own entry comes
     -- back as job 0 / level 0 and every level gate in the action modules fails.
     -- The Player struct is unaffected, so patch our own row back up from it.
     if flat_index == 0 and main_level == 0 then
-        local p = safe_get(function() return AshitaCore:GetMemoryManager():GetPlayer() end, nil)
+        local p = safe_call(nil, function() return AshitaCore:GetMemoryManager():GetPlayer() end)
         if p then
-            job        = safe_get(function() return p:GetMainJob()      end, job)
-            sub_job    = safe_get(function() return p:GetSubJob()       end, sub_job)
-            main_level = safe_get(function() return p:GetMainJobLevel() end, main_level)
-            sub_level  = safe_get(function() return p:GetSubJobLevel()  end, sub_level)
+            job        = safe_call(job,        p.GetMainJob,      p)
+            sub_job    = safe_call(sub_job,    p.GetSubJob,       p)
+            main_level = safe_call(main_level, p.GetMainJobLevel, p)
+            sub_level  = safe_call(sub_level,  p.GetSubJobLevel,  p)
         end
     end
 
-    local job_name     = safe_get(function()
-        return AshitaCore:GetResourceManager():GetString('jobs.names_abbr', job)
-    end, '')
-    local sub_job_name = safe_get(function()
-        return AshitaCore:GetResourceManager():GetString('jobs.names_abbr', sub_job)
-    end, '')
+    local rm = AshitaCore:GetResourceManager()
+    local job_name     = safe_call('', rm.GetString, rm, 'jobs.names_abbr', job)
+    local sub_job_name = safe_call('', rm.GetString, rm, 'jobs.names_abbr', sub_job)
 
     local position = {x = 0, y = 0, z = 0}
     local entity_status = -1
     if entity_mgr and target_idx and target_idx > 0 then
-        local ok_x, px = pcall(function() return entity_mgr:GetLocalPositionX(target_idx) end)
-        local ok_y, py = pcall(function() return entity_mgr:GetLocalPositionY(target_idx) end)
-        local ok_z, pz = pcall(function() return entity_mgr:GetLocalPositionZ(target_idx) end)
-        if ok_x and ok_y and ok_z then
-            position = {x = px, y = py, z = pz}
-        end
+        position = read_position(entity_mgr, target_idx) or position
         local ent = GetEntity(target_idx)
         if ent then
             local ok_s, s = pcall(function() return ent.Status end)
@@ -3697,6 +3659,14 @@ local function build_member_snapshot(party_mgr, entity_mgr, flat_index)
     }
 end
 
+-- Per-frame callers (tick loop, follow tick, config window, panel) go through here:
+-- the engine acts at most every 1.1s, so one rebuild per 0.1s is plenty.
+function common.refresh_game_state_if_stale()
+    if os.clock() - common.game_state.refreshed_at > 0.1 then
+        common.refresh_game_state()
+    end
+end
+
 function common.refresh_game_state()
     local state = common.game_state
     state.refreshed_at     = os.clock()
@@ -3720,22 +3690,16 @@ function common.refresh_game_state()
 
     local entity_mgr = common.get_entity_manager()
 
-    local function safe_get(fn, fallback)
-        local ok, val = pcall(fn)
-        if ok and val ~= nil then return val end
-        return fallback
-    end
-
     -- Cache alliance leader server IDs
-    state.alliance_leaders[1] = safe_get(function() return party_mgr:GetAlliancePartyLeaderServerId1() end, 0)
-    state.alliance_leaders[2] = safe_get(function() return party_mgr:GetAlliancePartyLeaderServerId2() end, 0)
-    state.alliance_leaders[3] = safe_get(function() return party_mgr:GetAlliancePartyLeaderServerId3() end, 0)
+    state.alliance_leaders[1] = safe_call(0, party_mgr.GetAlliancePartyLeaderServerId1, party_mgr)
+    state.alliance_leaders[2] = safe_call(0, party_mgr.GetAlliancePartyLeaderServerId2, party_mgr)
+    state.alliance_leaders[3] = safe_call(0, party_mgr.GetAlliancePartyLeaderServerId3, party_mgr)
 
     -- -----------------------------------------------------------------------
     -- Main party: flat indices 0-5
     -- -----------------------------------------------------------------------
     for i = 0, 5 do
-        local is_active = safe_get(function() return party_mgr:GetMemberIsActive(i) == 1 end, false)
+        local is_active = safe_call(0, party_mgr.GetMemberIsActive, party_mgr, i) == 1
         if not is_active then
             if i > 0 then state.party[i] = nil end
         else
@@ -3756,12 +3720,7 @@ function common.refresh_game_state()
                     if entity_mgr then
                         local pet_idx = pet_entity.TargetIndex
                         if pet_idx and pet_idx > 0 then
-                            local ok_px, px = pcall(function() return entity_mgr:GetLocalPositionX(pet_idx) end)
-                            local ok_py, py = pcall(function() return entity_mgr:GetLocalPositionY(pet_idx) end)
-                            local ok_pz, pz = pcall(function() return entity_mgr:GetLocalPositionZ(pet_idx) end)
-                            if ok_px and ok_py and ok_pz then
-                                member.pet_position = {x = px, y = py, z = pz}
-                            end
+                            member.pet_position = read_position(entity_mgr, pet_idx) or member.pet_position
                         end
                     end
                 end
@@ -3815,7 +3774,7 @@ function common.refresh_game_state()
         local first = (party_index - 1) * 6   -- 6 or 12
         local last  = first + 5                -- 11 or 17
         for flat_i = first, last do
-            local is_active = safe_get(function() return party_mgr:GetMemberIsActive(flat_i) == 1 end, false)
+            local is_active = safe_call(0, party_mgr.GetMemberIsActive, party_mgr, flat_i) == 1
             if is_active then
                 state.alliance_size = state.alliance_size + 1
                 local local_index = flat_i - first   -- 0-5 within sub-party
@@ -3841,17 +3800,24 @@ function common.refresh_game_state()
     -- -----------------------------------------------------------------------
     -- Refresh tracked targets (outside-party players)
     -- -----------------------------------------------------------------------
+    -- A player keeps their target index until they zone, so the cached slot is checked
+    -- first (one read). An empty or reassigned slot can't tell "out of range" from
+    -- "zoned and re-indexed", so a miss runs one GetServerId pass, at most once per
+    -- TRACKED_RESCAN_INTERVAL -- a target who zoned back in is picked up that late. The
+    -- pass re-indexes every tracked target, so later misses this refresh reuse it.
     for sid, tt in pairs(tracked_targets) do
-        local entity = nil
-        -- Re-resolve entity by server_id (target_index may change across zones)
-        for idx = 0, 2302 do
-            local e = GetEntity(idx)
-            if e and e.ServerId == sid then
-                entity = e
-                tt.target_index = e.TargetIndex or 0
-                break
+        local entity = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
+        if (not entity or entity.ServerId ~= sid) and entity_mgr
+                and state.refreshed_at - tracked_rescan_at >= TRACKED_RESCAN_INTERVAL then
+            tracked_rescan_at = state.refreshed_at
+            -- Descending, so the lowest slot holding a server id wins.
+            for idx = 0x8FF, 1, -1 do
+                local t = tracked_targets[entity_mgr:GetServerId(idx)]
+                if t then t.target_index = idx end
             end
+            entity = (tt.target_index or 0) > 0 and GetEntity(tt.target_index) or nil
         end
+        if entity and entity.ServerId ~= sid then entity = nil end
 
         if entity and entity.TargetIndex and entity.TargetIndex > 0 then
             local hpp = entity.HPPercent or 0
@@ -3859,13 +3825,7 @@ function common.refresh_game_state()
             -- Position
             local position = {x = 0, y = 0, z = 0}
             if entity_mgr then
-                local tidx = entity.TargetIndex
-                local ok_x, px = pcall(function() return entity_mgr:GetLocalPositionX(tidx) end)
-                local ok_y, py = pcall(function() return entity_mgr:GetLocalPositionY(tidx) end)
-                local ok_z, pz = pcall(function() return entity_mgr:GetLocalPositionZ(tidx) end)
-                if ok_x and ok_y and ok_z then
-                    position = {x = px, y = py, z = pz}
-                end
+                position = read_position(entity_mgr, entity.TargetIndex) or position
             end
 
             -- Only HPPercent is available for non-party entities from GetEntity();
