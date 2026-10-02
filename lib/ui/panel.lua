@@ -585,6 +585,17 @@ function panel.render(addon_settings, save_settings)
                 if save_settings then save_settings() end
             end
             imgui.PopItemWidth()
+
+            -- Japanese Client (global): send names in Japanese (lib/core/lang.lua).
+            local ja_var = { addon_settings.japanese_client == true }
+            imgui.SameLine(0, 20)
+            if imgui.Checkbox('Japanese Client', ja_var) then
+                addon_settings.japanese_client = ja_var[1]
+                if save_settings then save_settings() end
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip(tooltips.japanese_client)
+            end
         end
     end
     imgui.End()

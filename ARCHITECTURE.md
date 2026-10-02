@@ -22,6 +22,7 @@ lib/
     afk.lua                 AFK Sleep dead-man's switch (gates the tick after a stillness timeout)
     automation.lua          Priority-based action selection engine
     common.lua              Shared utilities (logging, party, buffs, commands)
+    lang.lua                Command language (spell/ability/item names sent in the client's language)
     parse_packets.lua       Raw-packet parsing (action packet 0x028)
     party_share.lua         Shared party list (publishes own party, auto-tracks every other session's)
     targets.lua             FFXI target-resolution helpers (from Ashita)
@@ -314,6 +315,11 @@ Re-stamping only ever moves the timer later, never earlier, so it cannot release
 - **Stratagem follow-up lock**: a result flagged `is_stratagem` sets `pending_stratagem = {action_type, timestamp}`; the next tick runs **only** that module so nothing pre-empts the paired spell. Released when the module returns nil, or after `STRATAGEM_FOLLOWUP_TIMEOUT` (5 s).
 - **Scheduled mid-cast removal**: a result carrying `scheduled_removal = {command, delay}` is handed to `common.schedule_command_removal`. See below.
 - `master_priority` includes `'critical'` (and DNC lists it), but there is no `critical` entry in `action_modules` — the engine skips unknown action types, so it is inert. Critical-HP healing is handled inside `heal.lua` via `abilities.critical`.
+- **Client language**: `execute_command` passes every command through `lang.translate` right before `QueueCommand`, after the `built_commands` lookup and `<bt>` substitution, which both key on the English text. See lang.lua below.
+
+### lang.lua – Command Language
+
+Job files write English commands; a Japanese client only accepts Japanese names. `lang.japanese` mirrors the opt-in `japanese_client` setting (**Japanese Client** checkbox in `/sk panel`), copied in by `execute_priority_actions` each pass; the boot config's `ashita.language` did not identify a Japanese client in-game, so it is not auto-detected. With it on, `lang.translate` swaps a command's first quoted name for its Japanese one, picking the resource table by verb (`/ma` → `GetSpellByName`, `/ja` / `/pet` → `GetAbilityByName`, `/item` / `/equip` → `GetItemByName`), each looked up with `langId` 2 (English) and read from `Name[2]` (Japanese; Lua slots are 0 Default, 1 English, 2 Japanese). A name with no Japanese is sent in English and warned about once per session. `lang.gather` builds the Hold AOE party line (`Gather together for <ability>`, or its Shift-JIS Japanese form). Item commands name the item by id through `common.item_name`, so the English name looked up is the client's own spelling.
 
 ### Scheduled Mid-Cast Removal
 

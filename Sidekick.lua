@@ -105,6 +105,9 @@ local default_settings = T{
     rest_enabled = false,
     rest_timer = 5,
     rest_distance = 7,
+    -- Game client runs in Japanese: quoted spell/ability/item names and the gather
+    -- alert are sent in Japanese (lib/core/lang.lua). Set from /sk panel.
+    japanese_client = false,
     -- Main config sections render either as a stack of collapsing headers or as
     -- one row of tabs -- never both. Switched from the right-click menu on any
     -- header or tab. 'headers' | 'tabs'.
@@ -1317,8 +1320,7 @@ ashita.events.register('command', 'sidekick_command', function(e)
         common.printf('  Job: %s', job_def and job_def.job_name or 'Not loaded')
         common.printf('  Automation: %s', automation_enabled and 'Enabled' or 'Disabled')
         common.printf('  Focus Target: %s', addon_settings.focus_target or 'None')
-        common.printf('  Debug Mode: %s', common.debug and 'Enabled' or 'Disabled')
-        local tracked = common.get_tracked_targets()
+        common.printf('  Debug Mode: %s', common.debug and 'Enabled' or 'Disabled')        local tracked = common.get_tracked_targets()
         local tracked_names = {}
         for _, tt in pairs(tracked) do table.insert(tracked_names, tt.name) end
         if #tracked_names > 0 then

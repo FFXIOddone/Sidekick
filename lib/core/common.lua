@@ -1127,6 +1127,19 @@ function common.find_equippable_item(spec)
     return nil
 end
 
+-- Canonical command name for item `id`: resolved from the item resource so the
+-- command matches the client's spelling (and lib/core/lang.lua can translate it)
+-- even when our label string differs. Falls back to `fallback` if the lookup fails.
+function common.item_name(id, fallback)
+    local ok, res = pcall(function()
+        return AshitaCore:GetResourceManager():GetItemById(id)
+    end)
+    if ok and res and res.Name and res.Name[1] and res.Name[1] ~= '' then
+        return res.Name[1]
+    end
+    return fallback
+end
+
 -- Build a native "/equip ammo" command for the best ammo tier the player can
 -- use and actually owns. spec must be a list of { id=, name=, level= } entries,
 -- ordered worst -> best. Picks the highest-level entry with level <= player_level
@@ -1148,7 +1161,7 @@ function common.select_ammo_equip_command(spec, player_level)
     if not best then return nil end
     local equip_num = EQUIP_COMMAND_CONTAINER[best_container] or 0
     return {
-        command     = string.format('/equip ammo "%s" %d', best.name, equip_num),
+        command     = string.format('/equip ammo "%s" %d', common.item_name(best.id, best.name), equip_num),
         description = string.format('Equipping %s', best.name),
     }
 end
@@ -1408,7 +1421,8 @@ function common.announce_gather(ability_name, settings)
         return
     end
     last_gather_announce = now
-    AshitaCore:GetChatManager():QueueCommand(1, string.format('/p Gather together for %s', ability_name))
+    -- Line in the client's language; required here, not at the top: lang requires common.
+    AshitaCore:GetChatManager():QueueCommand(1, '/p ' .. require('lib.core.lang').gather(ability_name))
 end
 
 -- Get distance between player and party member

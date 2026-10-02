@@ -56,6 +56,9 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 ## Latest Updates
 ### [2.9.0] - 2026-09-30
 
+### Added
+- **Japanese client support**: tick **Japanese Client** in `/sk panel` and spells, abilities and items are sent under their Japanese names, with the **Gather Alert** in Japanese too. — **Jawn**, **アオ**
+
 ### Changed
 - **Lighter on your frame rate**: Sidekick does far less work every frame, most noticeably with tracked/alliance targets or Follow on. — **Toots**, **Yunas**
 - **Quieter debug log**: `/sk debug` no longer prints a line for every buff gained or lost.
@@ -353,6 +356,7 @@ Sidekick/
 │   │   ├── afk.lua           # AFK Sleep dead-man's switch
 │   │   ├── automation.lua    # Action selection engine
 │   │   ├── common.lua        # Shared utilities
+│   │   ├── lang.lua          # Command language (names sent in the client's language)
 │   │   ├── parse_packets.lua # Packet parsing for casting state
 │   │   ├── roll_strategy.lua # Corsair Double-Up / Fold decision logic
 │   │   └── targets.lua       # Target-resolution helpers
@@ -443,8 +447,9 @@ you switch jobs. Delete the file to reset that character back to defaults.
 - `follow_enabled` (boolean): Enable opt-in leader following (`/follow` the follow target when far); off by default. Ignored while `multisend_follow` is on
 - `follow_distance` (number): Distance in yalms the follow target must exceed before `/follow` is sent (1-15, default 5)
 - `follow_target` (string): Character name to follow — a party member (P1-P5) or a session tracked target — shared by leader following and the resting distance check (optional)
+- `japanese_client` (boolean): Send spell, ability and item names, and the Hold AOE gather alert, in Japanese for a Japanese game client (**Japanese Client** checkbox in `/sk panel`); off by default
 - `hold_aoe_for_group` (boolean): Hold AOE casts (Protectra/Shellra/Bar, Diamondhide, area songs, fresh Phantom Rolls, Accession/Diffusion) until every alive, in-zone party member is in range (checkbox in `/sk panel`); off by default. While holding, sends `/p Gather together for <ability>` to the party, throttled to once every 5 seconds across all held abilities (opt-out with `hold_aoe_announce`)
-- `hold_aoe_announce` (boolean): Send the `/p Gather together for <ability>` party chat line while `hold_aoe_for_group` is holding a cast (**Gather Alert** checkbox in `/sk panel`); on by default. Turning it off holds silently — the hold itself is unchanged
+- `hold_aoe_announce` (boolean): Send the `/p Gather together for <ability>` party chat line (in Japanese with `japanese_client` on) while `hold_aoe_for_group` is holding a cast (**Gather Alert** checkbox in `/sk panel`); on by default. Turning it off holds silently — the hold itself is unchanged
 - `afk_enabled` (boolean): Enable AFK Sleep — pause automation after `afk_timeout` with no party movement and no combat, resume on your own movement (checkbox in `/sk panel`); on by default
 - `afk_timeout` (number): Seconds of no party movement and no combat before sleeping (60-3600, default 600). Stored in seconds; the `/sk panel` field shows minutes
 - `geo_enabled` (boolean): Enable geo management (Geo buffs, Geo debuffs, and Full Circle / luopan handling)
