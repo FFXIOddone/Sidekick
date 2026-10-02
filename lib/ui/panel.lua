@@ -613,7 +613,7 @@ function panel.render(addon_settings, save_settings)
             if imgui.Button('Default UI Colors') then
                 addon_settings.ui_accent_color = nil
                 if save_settings then save_settings() end
-            end            end
+            end
         end
     end
     imgui.End()
