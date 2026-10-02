@@ -605,7 +605,7 @@ function panel.render(addon_settings, save_settings)
             end
             if imgui.IsItemHovered() then
                 imgui.SetTooltip('Adds a read-only player, party, and tracked-target HP view to the configuration window.')
-            end            end
+            end
         end
     end
     imgui.End()
