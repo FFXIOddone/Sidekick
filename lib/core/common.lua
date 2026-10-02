@@ -3212,6 +3212,17 @@ function common.check_stratagem(job_def, settings, ability_key, ability)
     }
 end
 
+-- The abilities.precast entry an ability's area_precast names (SCH storm -> Accession),
+-- or nil. Shared by buff.lua's area pass and the [A] button.
+function common.area_precast_strat(job_def, ability)
+    local name = ability and ability.area_precast
+    if not name then return nil end
+    for _, strat in ipairs(job_def and job_def.abilities and job_def.abilities.precast or {}) do
+        if strat.name == name then return strat end
+    end
+    return nil
+end
+
 -- Check the always-required precast JA for a spell that cannot function
 -- without its buff (BLU Unbridled Learning: ability.requires_precast names
 -- the abilities.precast entry). Unlike stratagems this is never user-assigned;

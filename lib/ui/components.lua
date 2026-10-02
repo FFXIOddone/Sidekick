@@ -1393,8 +1393,15 @@ local function render_party_buttons(ctx, key_name, has_spell, ability, is_group,
     -- gets the song. Sits in the leading slot (like the Scholar S button on other
     -- jobs). Needs no Pianissimo, so it stays usable below Pianissimo's level.
     -- Every bard song gets it (Mazurka has no Pianissimo but is always area).
-    -- area_precast rows (SCH storms) get it too: Accession, then the spell on self.
-    if ability and (ability.magic == 'song' or ability.area_precast) then
+    -- area_precast rows (SCH storms) get it too: Accession, then the spell on self --
+    -- hidden (a spacer keeps the row aligned) outside the JA's stance (Accession:
+    -- Light Arts / Addendum: White), where buff.lua skips the area pass and
+    -- single-target storms still go out.
+    local area_strat = ability and common.area_precast_strat(ctx.job_def, ability)
+    if ability and ability.area_precast
+        and not (area_strat and action_core.has_any_buff(common.get_player_buffs(), area_strat.requires_buff)) then
+        render_slot_spacer()
+    elseif ability and (ability.magic == 'song' or ability.area_precast) then
         local a_enabled = is_group and is_group_party_buff_enabled(ctx, key_name, 'A')
             or is_party_buff_enabled(ctx, key_name, 'A')
 
@@ -1423,9 +1430,11 @@ local function render_party_buttons(ctx, key_name, has_spell, ability, is_group,
         end
 
         if imgui.IsItemHovered() then
-            ui_components.set_tooltip(ability.area_precast
-                and 'Area: Accession, then cast on yourself so everyone in range gets it.\nCast before any single-target storm; no storms while Accession is unavailable.'
-                or 'Area: sing without Pianissimo so everyone in range gets it.\nRecast tracks party members not given a specific ME/P button.')
+            if ability.area_precast then
+                ui_components.set_tooltip('Area: Accession, then cast on yourself so everyone in range gets it.\nCast before any single-target storm; no storms while Accession is unavailable.')
+            else
+                ui_components.set_tooltip('Area: sing without Pianissimo so everyone in range gets it.\nRecast tracks party members not given a specific ME/P button.')
+            end
         end
 
         if not has_spell then

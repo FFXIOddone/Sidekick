@@ -742,15 +742,16 @@ end
 -- The [A] storm's next step: the storm itself (Accession up), the Accession JA
 -- (is_stratagem: automation's follow-up lock casts the storm next tick), false
 -- while the area storm is owed but can't go out (the caller then holds every
--- storm), or nil when nobody voting is missing it.
+-- storm), or nil when nobody voting is missing it -- or when Accession's stance
+-- (Light Arts / Addendum: White) is down: the [A] button is hidden there and
+-- ignored, so single-target storms still go out.
 local function area_precast_step(ability, job_def, settings, party_buff_config, state)
-    local strat
-    for _, s in ipairs(job_def.abilities.precast or {}) do
-        if s.name == ability.area_precast then strat = s break end
-    end
+    local strat = common.area_precast_strat(job_def, ability)
     if not strat then return false end
 
     local buffs = state.player.buffs
+    if not action_core.has_any_buff(buffs, strat.requires_buff) then return nil end
+
     local accession_up = action_core.has_any_buff(buffs, strat.buff_id)
     local dedicated = area_storm_dedicated(job_def, settings, party_buff_config)
     if not accession_up and not area_storm_missing(ability, dedicated, state) then
@@ -775,7 +776,6 @@ local function area_precast_step(ability, job_def, settings, party_buff_config, 
 
     if common.spendable_stratagems(settings) < 1
        or not common.precast_permanently_usable(strat, state.player.main_level, state.player.sub_level)
-       or not action_core.has_any_buff(buffs, strat.requires_buff)
        or common.is_command_blocked(strat.command) then
         return false
     end
