@@ -354,12 +354,15 @@ local function load_job_definition(main_job_id, sub_job_id)
     local sub_abilities = sub_def and sub_def.abilities or {}
     merged_def.abilities = merge_abilities(main_abilities, sub_abilities, main_def, sub_def)
 
-    -- Flag whether this job (main or sub) has song magic. The buff UI shows the
-    -- bard [A] area column when it does, and every non-song row indents under it.
+    -- Flag whether this job has an [A] area column: song magic (main or sub) or an
+    -- area_precast row (SCH storms -- main job only, a SCH sub never reaches their
+    -- level). The buff UI shows the column and every other row indents under it.
     for _, list in pairs(merged_def.abilities) do
         if type(list) == 'table' then
             for _, ab in ipairs(list) do
-                if ab.magic == 'song' then merged_def.has_songs = true end
+                if ab.magic == 'song' or (ab.area_precast and ab.is_main_job ~= false) then
+                    merged_def.has_area_column = true
+                end
             end
         end
     end

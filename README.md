@@ -58,10 +58,12 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 
 ### Added
 - **Japanese client support**: tick **Japanese Client** in `/sk panel` and spells, abilities and items are sent under their Japanese names, with the **Gather Alert** in Japanese too. — **Jawn**, **アオ**
+- **Scholar Area storms**: an **[A]** button on storm rows casts Accession, then the storm on you, before any single-target storm. — **Benthere**
 
 ### Changed
 - **Lighter on your frame rate**: Sidekick does far less work every frame, most noticeably with tracked/alliance targets or Follow on. — **Toots**, **Yunas**
 - **Quieter debug log**: `/sk debug` no longer prints a line for every buff gained or lost.
+- **Storms target party members**: storms now use **ME**/**P1-P5** buttons instead of a self-only checkbox. — **Benthere**
 
 ### Fixed
 - **Indi auras stay visible with Follow on**: Follow no longer rewrites other players' position packets, which blanked their Geo Indi auras.

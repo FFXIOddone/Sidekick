@@ -263,6 +263,10 @@ return {
             -- weather: stacking a storm on matching weather is the double-weather
             -- bonus this group exists for, and reading the storm buff instead
             -- would just feed the group its own last cast back forever.
+            -- Server validTargets = self + party (no alliance, so no target_outside).
+            -- One storm per target: a new storm cancels any other. area_precast gives
+            -- the row an [A] button -- Accession, then the storm on <me> -- which
+            -- buff.lua casts before any single-target storm (see Phase 1b there).
             {
                 name = 'Aurorastorm',
                 level = 48,
@@ -270,11 +274,14 @@ return {
                 spell_id = 119,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Aurorastorm" <me>',
+                command = function(target)
+                    return '/ma "Aurorastorm" '..target
+                end,
                 buff_id = 184,
                 group = 'storm',
                 auto_element = 'light',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Voidstorm',
@@ -283,11 +290,14 @@ return {
                 spell_id = 118,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Voidstorm" <me>',
+                command = function(target)
+                    return '/ma "Voidstorm" '..target
+                end,
                 buff_id = 185,
                 group = 'storm',
                 auto_element = 'dark',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Thunderstorm',
@@ -296,11 +306,14 @@ return {
                 spell_id = 117,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Thunderstorm" <me>',
+                command = function(target)
+                    return '/ma "Thunderstorm" '..target
+                end,
                 buff_id = 182,
                 group = 'storm',
                 auto_element = 'thunder',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Hailstorm',
@@ -309,11 +322,14 @@ return {
                 spell_id = 116,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Hailstorm" <me>',
+                command = function(target)
+                    return '/ma "Hailstorm" '..target
+                end,
                 buff_id = 179,
                 group = 'storm',
                 auto_element = 'ice',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Firestorm',
@@ -322,11 +338,14 @@ return {
                 spell_id = 115,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Firestorm" <me>',
+                command = function(target)
+                    return '/ma "Firestorm" '..target
+                end,
                 buff_id = 178,
                 group = 'storm',
                 auto_element = 'fire',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Windstorm',
@@ -335,11 +354,14 @@ return {
                 spell_id = 114,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Windstorm" <me>',
+                command = function(target)
+                    return '/ma "Windstorm" '..target
+                end,
                 buff_id = 180,
                 group = 'storm',
                 auto_element = 'wind',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Rainstorm',
@@ -348,11 +370,14 @@ return {
                 spell_id = 113,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Rainstorm" <me>',
+                command = function(target)
+                    return '/ma "Rainstorm" '..target
+                end,
                 buff_id = 183,
                 group = 'storm',
                 auto_element = 'water',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             {
                 name = 'Sandstorm',
@@ -361,11 +386,14 @@ return {
                 spell_id = 99,
                 magic = 'white',
                 magic_type = 'enhancing',
-                command = '/ma "Sandstorm" <me>',
+                command = function(target)
+                    return '/ma "Sandstorm" '..target
+                end,
                 buff_id = 181,
                 group = 'storm',
                 auto_element = 'earth',
                 auto_element_source = 'weather',
+                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
             },
             -- Other buffs
             {

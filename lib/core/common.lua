@@ -113,6 +113,16 @@ local BASE_BUFF_DURATION = {
     ['Shell II']    = 1800,
     ['Shell III']   = 1800,
     ['Shell IV']    = 1800,
+    -- Storms (enhancing_spell.lua): a Trust's Accession storm otherwise sat on the
+    -- 300s unknown-status backstop, two minutes after it really wore.
+    ['Firestorm']    = 180,
+    ['Hailstorm']    = 180,
+    ['Windstorm']    = 180,
+    ['Sandstorm']    = 180,
+    ['Thunderstorm'] = 180,
+    ['Rainstorm']    = 180,
+    ['Aurorastorm']  = 180,
+    ['Voidstorm']    = 180,
 }
 
 -- All bard songs share one base duration.
@@ -2990,8 +3000,11 @@ function common.effective_ability_cost(ability, settings, job_def)
     -- missing stratagem_settings table can NOT short-circuit here. It is created lazily by
     -- the S popup, and heal.execute_aoe raises Accession without ever touching that popup,
     -- which is exactly the player who has none.
+    -- area_precast rows (SCH storms) have no S popup: an assignment left from before must
+    -- not double (Accession) or halve their cost. The buff-already-up half still applies.
     local sset = settings and settings.stratagem_settings
-    local ss   = sset and (sset[ability.name] or (ability.group and sset[ability.group]))
+    local ss   = not ability.area_precast and sset
+        and (sset[ability.name] or (ability.group and sset[ability.group]))
 
     -- A strat counts when the user assigned it OR its buff is already up: the server
     -- charges the modified cost for whichever spell consumes the buff, whether or not
@@ -3075,6 +3088,9 @@ end
 --   ability     (table)  – optional ability table; when provided, ability.group is used as fallback key
 function common.check_stratagem(job_def, settings, ability_key, ability)
     if not settings or not settings.stratagem_settings then return nil end
+    -- area_precast rows (SCH storms) fire their JA from buff.lua Phase 1b; an S
+    -- assignment left from before would turn every single-target cast into an AOE.
+    if ability and ability.area_precast then return nil end
 
     -- Try primary key first, then group as fallback
     local resolved_key = ability_key

@@ -950,6 +950,11 @@ return {
     requires_precast       = 'Unbridled Learning',  -- names an abilities.precast entry that MUST be fired
                                                     --   right before this spell (check_required_precast);
                                                     --   the spell is skipped while the JA can't fire
+    area_precast           = 'Accession (+AOE)',  -- names an abilities.precast entry (SCH storms): the row
+                                                  --   gets an [A] button and no S popup. buff.lua Phase 1b
+                                                  --   fires the JA, then this spell on <me>, ahead of every
+                                                  --   single-target cast of an area_precast row -- and holds
+                                                  --   them all while the area cast is owed but can't go out
     precast_required       = true,              -- precast entries only (SCH Enlightenment): the JA grants a
                                                 --   buff its paired spell's requires_buff needs, so
                                                 --   check_stratagem always holds the spell for it (no Hold
