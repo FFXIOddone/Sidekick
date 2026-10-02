@@ -281,7 +281,7 @@ return {
                 group = 'storm',
                 auto_element = 'light',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Voidstorm',
@@ -297,7 +297,7 @@ return {
                 group = 'storm',
                 auto_element = 'dark',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Thunderstorm',
@@ -313,7 +313,7 @@ return {
                 group = 'storm',
                 auto_element = 'thunder',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Hailstorm',
@@ -329,7 +329,7 @@ return {
                 group = 'storm',
                 auto_element = 'ice',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Firestorm',
@@ -345,7 +345,7 @@ return {
                 group = 'storm',
                 auto_element = 'fire',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Windstorm',
@@ -361,7 +361,7 @@ return {
                 group = 'storm',
                 auto_element = 'wind',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Rainstorm',
@@ -377,7 +377,7 @@ return {
                 group = 'storm',
                 auto_element = 'water',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             {
                 name = 'Sandstorm',
@@ -393,7 +393,7 @@ return {
                 group = 'storm',
                 auto_element = 'earth',
                 auto_element_source = 'weather',
-                area_precast = 'Accession (+AOE)',  -- [A] button: Accession, then this on <me>
+                area_precast = 'Accession (+AOE)',
             },
             -- Other buffs
             {

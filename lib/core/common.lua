@@ -3212,10 +3212,9 @@ function common.check_stratagem(job_def, settings, ability_key, ability)
     }
 end
 
--- The abilities.precast entry an ability's area_precast names (SCH storm -> Accession),
--- or nil. Shared by buff.lua's area pass and the [A] button.
-function common.area_precast_strat(job_def, ability)
-    local name = ability and ability.area_precast
+-- The abilities.precast entry called `name`, or nil: an ability's requires_precast
+-- (BLU Unbridled Learning) or area_precast (SCH storm -> Accession).
+function common.precast_by_name(job_def, name)
     if not name then return nil end
     for _, strat in ipairs(job_def and job_def.abilities and job_def.abilities.precast or {}) do
         if strat.name == name then return strat end
@@ -3234,28 +3233,23 @@ end
 --                            job, cooldown, blocked) → skip the spell
 function common.check_required_precast(job_def, ability)
     if not ability or not ability.requires_precast then return nil end
-    local strat_defs = job_def and job_def.abilities and job_def.abilities.precast
-    if not strat_defs then return false end
-    for _, strat in ipairs(strat_defs) do
-        if strat.name == ability.requires_precast then
-            if common.has_buff(0, strat.buff_id) then return nil end
-            local main_level = common.get_player_level()
-            -- is_usable covers cooldown + status-block (cost 0 = free); the rest
-            -- (main job / level / learned) it doesn't check, so gate those here.
-            if (strat.main_job_only and strat.is_main_job == false)
-                or (strat.level and main_level < strat.level)
-                or not common.has_spell_learned(strat)
-                or not require('lib.core.action_core').is_usable(strat, job_def, 0) then
-                return false
-            end
-            return {
-                command = strat.command,
-                description = string.format('Using %s', strat.name),
-                is_stratagem = true,
-            }
-        end
+    local strat = common.precast_by_name(job_def, ability.requires_precast)
+    if not strat then return false end
+    if common.has_buff(0, strat.buff_id) then return nil end
+    local main_level = common.get_player_level()
+    -- is_usable covers cooldown + status-block (cost 0 = free); the rest
+    -- (main job / level / learned) it doesn't check, so gate those here.
+    if (strat.main_job_only and strat.is_main_job == false)
+        or (strat.level and main_level < strat.level)
+        or not common.has_spell_learned(strat)
+        or not require('lib.core.action_core').is_usable(strat, job_def, 0) then
+        return false
     end
-    return false
+    return {
+        command = strat.command,
+        description = string.format('Using %s', strat.name),
+        is_stratagem = true,
+    }
 end
 
 -- True when a precast_required JA assigned to this ability would grant the
