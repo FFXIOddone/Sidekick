@@ -720,8 +720,10 @@ end
 -- landings, and one stale "missing" re-fires Accession every recast. Self drives
 -- the timing and the same cast covers every Trust in range.
 -- reaches: the cast would land on someone besides self (Trusts count here).
+-- voters: anyone's buff list was read at all.
 local function area_storm_poll(ability, dedicated, state, any_range)
-    local missing = not dedicated[0] and action_core.needs_buff(state.player.buffs, ability.buff_id)
+    local voters = not dedicated[0]
+    local missing = voters and action_core.needs_buff(state.player.buffs, ability.buff_id)
     local reaches = false
     local pz = common.get_party_member_zone(0)
     for i = 1, 5 do
@@ -730,13 +732,13 @@ local function area_storm_poll(ability, dedicated, state, any_range)
             local near = m.target_index and m.target_index > 0
                 and common.can_be_helped(m.target_index, common.AOE_RADIUS)
             reaches = reaches or near
-            if not m.is_trust and (near or any_range and not state.charmed[m.target_index])
-               and action_core.needs_buff(m.buffs or {}, ability.buff_id) then
-                missing = true
+            if not m.is_trust and (near or any_range and not state.charmed[m.target_index]) then
+                voters = true
+                if action_core.needs_buff(m.buffs or {}, ability.buff_id) then missing = true end
             end
         end
     end
-    return missing, reaches
+    return missing, reaches, voters
 end
 
 -- os.clock() when Phase 1b last fired Accession; cleared once a storm consumes it.
@@ -744,6 +746,10 @@ end
 -- another buff (an S-popup Regen) is left to it, so its follow-up tick isn't hijacked.
 local area_accession_at = nil
 local ACCESSION_DURATION = 60
+-- os.clock() of the last area storm sent, for the no-voter fallback below.
+-- ponytail: stamped at send, so an interrupted cast leaves the Trusts bare until it
+-- runs out; stamp on the 0x028 finish (as songs do) if that shows up in play.
+local area_storm_at = nil
 
 -- The [A] storm's next step: the storm itself (Accession up, or a plain self cast
 -- when nobody else is in range to share it), the Accession JA (is_stratagem:
@@ -763,7 +769,13 @@ local function area_precast_step(ability, area_key, job_def, settings, party_buf
     local ours = accession_up and area_accession_at ~= nil
         and os.clock() - area_accession_at < ACCESSION_DURATION
     local dedicated = area_storm_dedicated(job_def, settings, party_buff_config, area_key)
-    local missing, reaches = area_storm_poll(ability, dedicated, state, settings.hold_aoe_for_group)
+    local missing, reaches, voters = area_storm_poll(ability, dedicated, state, settings.hold_aoe_for_group)
+    -- Nobody to read (self holds its own storm, the rest are Trusts): recast on the
+    -- storm's known duration, timed from the last area cast.
+    if not voters and reaches then
+        local duration = common.base_buff_duration(ability.buff_id, ability.name) or math.huge
+        missing = not area_storm_at or os.clock() - area_storm_at >= duration
+    end
     if not ours and not missing then return nil end
 
     if settings.hold_aoe_for_group and not common.group_in_aoe_range(nil, dedicated) then
@@ -775,7 +787,7 @@ local function area_precast_step(ability, area_key, job_def, settings, party_buf
     if accession_up or not reaches then
         local result = action_core.try_use(ability, job_def, settings, 0,
             string.format('Applying area buff: %s', ability.name))
-        if result and accession_up then area_accession_at = nil end
+        if result and accession_up then area_accession_at, area_storm_at = nil, os.clock() end
         return result or false
     end
 
@@ -960,6 +972,8 @@ function buff.execute(settings, job_def, main_level, sub_level, player_resource,
         -- song later. See the comment on the two holds below for what each mode
         -- does with it.
         local area_pending = false
+        -- Set while Hold AOE for Group waits on a gather for an [A] song.
+        local gathering = false
         for _, ability in ipairs(available_abilities) do
             -- Every song gets an area toggle: songs cast area by omitting Pianissimo;
             -- the single-target pass adds Pianissimo for ME/P1-P5.
@@ -972,9 +986,9 @@ function buff.execute(settings, job_def, main_level, sub_level, player_resource,
                and area_needs_recast(ability, party_buff_config, song_keys, available_abilities, settings, state, area_manual) then
                 if aoe_excl and not common.group_in_aoe_range(SONG_AOE_RANGE, aoe_excl) then
                     -- Hold: a member with no single-target song is out of range.
-                    -- Don't area-cast and don't mark pending, so the single-target
-                    -- pass still manages Pianissimo-assigned members this tick.
+                    -- Don't area-cast; the single-target songs wait too (see below).
                     common.announce_gather(ability.name, settings)
+                    gathering = true
                 elseif fast_casting and not has_pianissimo then
                     -- Only raise Pianissimo once the song is off recast and affordable,
                     -- else Pianissimo's own recast burns down while the song waits.
@@ -1026,10 +1040,11 @@ function buff.execute(settings, job_def, main_level, sub_level, player_resource,
         -- subjob Protect, Nightingale, a rune) has nothing to do with the area
         -- song and must not be stalled behind it -- which returning out of the
         -- module here would do.
-        -- The one thing that does NOT hold is the gather wait above: it leaves
-        -- area_pending clear on purpose, so a member out of range can't stop the
-        -- single-target pass from managing the members it can reach.
-        hold_songs = area_pending
+        -- The gather wait holds them too, as the storm pass does: a single sung now
+        -- is overwritten when the group gathers and the area song goes out. It
+        -- stays out of area_pending, so fast-casting mode doesn't stall the whole
+        -- module behind a straggler either.
+        hold_songs = area_pending or gathering
     end
 
     -- Phase 1b: area storm ([A] on an area_precast row -- SCH storms). Accession, then

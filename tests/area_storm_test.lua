@@ -102,5 +102,20 @@ test('the area pass spends its own Accession even once nobody is missing the sto
     assert_eq(tick(storm_settings(), cfg, false), '/ma "Firestorm" 256');
 end);
 
+test('with only Trusts to cover, the area storm recasts on its 180 s duration', function()
+    local s = storm_settings({ ungrouped_storm = true });
+    local cfg = { Firestorm = { A = true }, Thunderstorm = { [0] = true } };   -- self has its own storm
+    local function at(buffs, dt)
+        fake.state.player.buffs, common.game_state.player.buffs = buffs, buffs;
+        now = now + dt;
+        return tick(s, cfg, false);
+    end
+    setup({ LIGHT_ARTS, 182 }, TRUSTS);   -- 182 = Thunderstorm
+    assert_eq(tick(s, cfg), '/ja "Accession" <me>', 'never cast: due now');
+    assert_eq(at({ LIGHT_ARTS, 182, ACCESSION }, 1), '/ma "Firestorm" 256');
+    assert_eq(at({ LIGHT_ARTS, 182 }, 60), nil, 'within the duration: nothing');
+    assert_eq(at({ LIGHT_ARTS, 182 }, 120), '/ja "Accession" <me>', 'duration up: recast');
+end);
+
 os.clock = real_clock;
 package.loaded['lib.ui.config'] = real_config;

@@ -533,6 +533,20 @@ local function setup_job()
             settings.save()
         end
 
+        -- Storms were self-only checkbox rows, on unless switched off; they now need a
+        -- target button. Carry that default over once: ME on the grouped storm row.
+        -- ponytail: grouped only -- ungrouped, every storm read as on, so pick one by hand.
+        local pb = addon_settings.party_buffs
+        if main_job_id == 20 and not (pb and pb.storm)
+           and addon_settings.disabled_group_storm ~= true and addon_settings.ungrouped_storm ~= true then
+            addon_settings.party_buffs = pb or T{}
+            addon_settings.party_buffs.storm = T{ [0] = true }
+            -- The config window copies settings.party_buffs only while its own copy is empty.
+            local live = ui_config.get_party_buffs()
+            if next(live) ~= nil and live.storm == nil then live.storm = { [0] = true } end
+            settings.save()
+        end
+
         common.printf('Loaded settings for %s', job_def.job_name)
     end
 end
