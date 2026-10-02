@@ -20,15 +20,15 @@ test('the overview lists the active player, party, and sorted tracked targets on
     fake.reset();
     common.game_state = {
         refreshed_at = os.clock(),
-        player = { name = 'Main', server_id = 1, hpp = 95, is_active = true },
+        player = { name = 'Main', server_id = 1, hpp = 95, hpp_valid = true, is_active = true },
         party = {
-            [1] = { name = 'PartyMate', server_id = 2, hpp = 55, is_active = true },
-            [2] = { name = 'Duplicate', server_id = 1, hpp = 1, is_active = true },
+            [1] = { name = 'PartyMate', server_id = 2, hpp = 55, hpp_valid = true, is_active = true },
+            [2] = { name = 'Duplicate', server_id = 1, hpp = 1, hpp_valid = true, is_active = true },
         },
         tracked = {
-            [1] = { name = 'Zulu', server_id = 4, hpp = 90, is_active = true },
-            [2] = { name = 'Main copy', server_id = 1, hpp = 1, is_active = true },
-            [3] = { name = 'Alpha', server_id = 3, hpp = 20, is_active = true },
+            [1] = { name = 'Zulu', server_id = 4, hpp = 90, hpp_valid = true, is_active = true },
+            [2] = { name = 'Main copy', server_id = 1, hpp = 1, hpp_valid = true, is_active = true },
+            [3] = { name = 'Alpha', server_id = 3, hpp = 20, hpp_valid = true, is_active = true },
             [5] = { name = 'Inactive', server_id = 5, hpp = 0, is_active = false },
         },
     };
@@ -64,11 +64,46 @@ test('the overview lists the active player, party, and sorted tracked targets on
     assert_eq(child_end_count, 1);
 end);
 
+test('unavailable HP is distinct from a valid zero percent member', function()
+    fake.reset();
+    common.game_state = {
+        refreshed_at = os.clock(),
+        player = { name = 'Unavailable', server_id = 1, hpp = 0, hpp_valid = false, is_active = true },
+        party = {
+            [1] = { name = 'Dead', server_id = 2, hpp = 0, hpp_valid = true, is_active = true },
+        },
+        tracked = {},
+    };
+
+    local names, unavailable, values, colors, progress = {}, {}, {}, {}, {};
+    fake.imgui = {
+        CollapsingHeader = function() return true; end,
+        GetTextLineHeightWithSpacing = function() return 10; end,
+        GetTextLineHeight = function() return 8; end,
+        BeginChild = function() return true; end,
+        Text = function(text) names[#names + 1] = text; end,
+        TextDisabled = function(text) unavailable[#unavailable + 1] = text; end,
+        TextColored = function(color, text)
+            colors[#colors + 1] = color;
+            values[#values + 1] = text;
+        end,
+        ProgressBar = function(value) progress[#progress + 1] = value; end,
+        EndChild = function() end,
+    };
+
+    components.render_party_overview({ settings = { party_overview_enabled = true } });
+
+    assert_eq(names, { 'Unavailable', 'Dead' });
+    assert_eq(unavailable, { '--' });
+    assert_eq(values, { '  0%' });
+    assert_eq(colors, { components.LIGHT_RED });
+    assert_eq(progress, { 0 });
+end);
 test('a render error leaves the child panel balanced through abort_sections', function()
     fake.reset();
     common.game_state = {
         refreshed_at = os.clock(),
-        player = { name = 'Main', server_id = 1, hpp = 95, is_active = true },
+        player = { name = 'Main', server_id = 1, hpp = 95, hpp_valid = true, is_active = true },
         party = {},
         tracked = {},
     };

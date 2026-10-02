@@ -2389,15 +2389,21 @@ function ui_components.render_party_overview(ctx)
     party_overview_child_open = true
     if visible then
         for _, member in ipairs(members) do
-            local hp = tonumber(member.hpp) or 0
-            hp = math.max(0, math.min(100, hp))
-            local color = hp < (ctx.settings.critical_threshold or 30) and LIGHT_RED
-                or hp < (ctx.settings.heal_threshold or 75) and LIGHT_YELLOW or LIGHT_GREEN
+            local hp = member.hpp_valid and tonumber(member.hpp)
+            local hp_valid = type(hp) == 'number' and hp == hp
+                and hp ~= math.huge and hp ~= -math.huge
             imgui.Text(member.name)
             imgui.SameLine()
-            imgui.TextColored(color, string.format('%3d%%', hp))
-            imgui.SameLine()
-            imgui.ProgressBar(hp / 100, { 110, imgui.GetTextLineHeight() }, '')
+            if hp_valid then
+                hp = math.max(0, math.min(100, hp))
+                local color = hp < (ctx.settings.critical_threshold or 30) and LIGHT_RED
+                    or hp < (ctx.settings.heal_threshold or 75) and LIGHT_YELLOW or LIGHT_GREEN
+                imgui.TextColored(color, string.format('%3d%%', hp))
+                imgui.SameLine()
+                imgui.ProgressBar(hp / 100, { 110, imgui.GetTextLineHeight() }, '')
+            else
+                imgui.TextDisabled('--')
+            end
         end
     end
     imgui.EndChild()
