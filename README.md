@@ -57,7 +57,7 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 ### [2.9.0] - 2026-09-30
 
 ### Added
-- **Japanese client support**: tick **Japanese Client** in `/sk panel` and spells, abilities and items are sent under their Japanese names, with the **Gather Alert** in Japanese too.
+- **Japanese client support**: tick **Japanese Client** in `/sk panel` and spells, abilities and items are sent under their Japanese names, with the **Gather Alert** in Japanese too. — **Jawn**, **アオ**
 
 ### Changed
 - **Lighter on your frame rate**: Sidekick does far less work every frame, most noticeably with tracked/alliance targets or Follow on. — **Toots**, **Yunas**

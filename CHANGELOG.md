@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.9.0] - 2026-09-30
 
-Japanese client support, plus a performance pass: the performance changes alter nothing Sidekick decides, it just does much less work per frame to decide it. Thanks to **Toots** and **Yunas**.
+Japanese client support, plus a performance pass: the performance changes alter nothing Sidekick decides, it just does much less work per frame to decide it. Thanks to **Jawn**, **アオ**, **Toots** and **Yunas**.
 
 ### Added
 - **Japanese client support** (`lib/core/lang.lua`, `automation.execute_command`, `common.announce_gather`): a Japanese FFXI client only accepts a command whose quoted name is in Japanese, so `/ja "Troubadour" <me>` has to go out as `/ja "トルバドゥール" <me>`. Job files keep writing English commands. `automation.execute_command` hands every command to `lang.translate` right before `QueueCommand` — after the `built_commands` lookup and the `<bt>` substitution, which both still key on the English text — and it swaps the first quoted name for its Japanese one. The command verb picks the resource table (`/ma` spells, `/ja` and `/pet` abilities, `/item` and `/equip` items), so a spell, ability and item sharing a name can't collide. The Japanese name comes from Ashita's resource manager (`Get*ByName(name, 2)`, `Name[2]`), read out of the client's own DATs and already Shift-JIS, so the addon keeps no name tables. Ashita's two numberings differ, and `lang.lua` spells both out: the `langId` argument is 0 Default, 1 Japanese, 2 English, while a resource's Lua `Name[]` slots are 0 Default, 1 English, 2 Japanese.
