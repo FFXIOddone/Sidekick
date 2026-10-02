@@ -70,6 +70,7 @@ local last_job_id = nil
 local last_sub_job_id = nil
 local last_level = nil
 local last_unsupported_warning = nil  -- Track last unsupported job warning to prevent spam
+local zoned = true  -- automation_tick must refresh game_state before trusting it (see there)
 
 -- Settings file path
 local default_settings = T{
@@ -104,6 +105,9 @@ local default_settings = T{
     rest_enabled = false,
     rest_timer = 5,
     rest_distance = 7,
+    -- Game client runs in Japanese: quoted spell/ability/item names and the gather
+    -- alert are sent in Japanese (lib/core/lang.lua). Set from /sk panel.
+    japanese_client = false,
     -- Main config sections render either as a stack of collapsing headers or as
     -- one row of tabs -- never both. Switched from the right-click menu on any
     -- header or tab. 'headers' | 'tabs'.
@@ -543,18 +547,29 @@ local function automation_tick()
         return
     end
 
-    -- Gather player + party snapshot once for this tick.
-    -- All action modules can read common.game_state.player / common.game_state.party[1..5]
-    -- instead of making individual API calls each cycle.
-    -- Must run BEFORE the mount guard so that is_mounted is refreshed every tick;
-    -- otherwise once set to true it would never be cleared (the early return prevented
-    -- refresh_game_state from executing).
-    common.refresh_game_state()
-
     -- Player has not fully loaded in yet (job reads as NON/NON).
     -- Skip all automation until the server sends valid job data.
     if common.is_loading() then
+        zoned = true
         return
+    end
+
+    -- Gather player + party snapshot for this tick.
+    -- All action modules can read common.game_state.player / common.game_state.party[1..5]
+    -- instead of making individual API calls each cycle.
+    -- At most 10Hz, including while the engine idles with the throttle open: a
+    -- per-frame rebuild was the render-time jump seen once automation started.
+    -- Forced on the first frame after loading: the panel and follow_tick refresh on
+    -- the loading screen too, and that snapshot (blank party, HP 0 -> is_dead) must
+    -- never be reused.
+    -- Must run BEFORE the mount guard so that is_mounted is refreshed every tick;
+    -- otherwise once set to true it would never be cleared (the early return prevented
+    -- refresh_game_state from executing).
+    if zoned then
+        common.refresh_game_state()
+        zoned = false
+    else
+        common.refresh_game_state_if_stale()
     end
 
     -- Point auto_element-tagged groups (RDM enspells, SCH storms) at the tier matching
@@ -785,10 +800,7 @@ local function follow_tick()
     -- Engine owns follow when it can (keeps healing above follow); only take over otherwise.
     if automation_enabled and common.can_attack() then return end
 
-    if not common.game_state or not common.game_state.refreshed_at
-        or os.clock() - common.game_state.refreshed_at > 0.1 then
-        common.refresh_game_state()
-    end
+    common.refresh_game_state_if_stale()
 
     if common.is_loading() then return end
     if common.is_mounted() then return end
@@ -949,20 +961,6 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
         return
     end
 
-    -- Zero the server's autorun-cancel flag on position syncs (0x0D byte 0x42) so
-    -- /follow survives them. Only while native follow is enabled. Do NOT touch 0x37
-    -- byte 0x58: that is Flags4 (GeoIndi bits 0-6 + JobMasterFlag bit 7), not a
-    -- movement flag -- zeroing it wiped the job-mastery stars and the GEO Indi aura.
-    if addon_settings and addon_settings.follow_enabled and not addon_settings.multisend_follow then
-        if e.id == 0x0D then
-            local packet = e.data:totable()
-            if packet[0x42 + 1] ~= 0 then
-                packet[0x42 + 1] = 0
-                e.data_modified = packet
-            end
-        end
-    end
-
     -- Handle action packets (0x028): casting detection, buff tracking, sleep inference
     -- Message 230 = caster/player gains the effect, 266 = other party members/Trusts gain the effect
     -- Message 83  = buff/debuff removed from target (e.g. Paralyna removes Paralysis)
@@ -1032,17 +1030,7 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
 
             for _, target in ipairs(actionPacket.Targets) do
                 for _, action in ipairs(target.Actions) do
-                    -- Resolve target name via fast index lookup (avoid O(2304) scan)
-                    local target_name = common.resolve_entity_name(target.Id)
-
-                    local buff_name = AshitaCore:GetResourceManager():GetString('buffs.names', action.Param)
-                    if not buff_name or buff_name == '' then
-                        buff_name = 'Buff#' .. action.Param
-                    end
-
                     if action.Message == 230 or action.Message == 266 then
-                        common.debugf('%s gained the effect of %s.', target_name, buff_name)
-
                         -- Base duration for timed expiry (nil = no timer). The
                         -- actor (UserId) is the caster -- used for per-caster song
                         -- slot accounting on the target.
@@ -1070,8 +1058,6 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
                         end
 
                     elseif action.Message == 83 then
-                        common.debugf('%s lost the effect of %s (via 0x028).', target_name, buff_name)
-
                         -- Remove from Trust, tracked target, alliance, and pet buff tracking (all in trust_buffs)
                         if target.Id >= 0x1000000 or common.is_tracked_target(target.Id) or common.is_alliance_member(target.Id) or common.is_pet(target.Id) then
                             common.handle_buff_removal(target.Id, action.Param)
@@ -1122,33 +1108,22 @@ ashita.events.register('packet_in', 'sidekick_packet_in', function(e)
             local buff_id   = msg.param
 
             if server_id > 0 and buff_id > 0 and buff_id ~= 255 then
-                -- Resolve target name via fast index lookup (avoid O(2304) scan)
-                local target_name = common.resolve_entity_name(server_id)
-
                 -- When the target is dead (entity_status == 3), the server sends a 0x029
                 -- packet whose param is the SPELL ID of the rejected raise — not a buff ID.
                 -- Treat this as a signal that the target already has a pending raise.
                 if get_entity_status_in_gs(server_id) == 3 then
-                    common.debugf('[REVIVE] %s is dead — 0x029 param %d is a rejected raise spell ID; setting pending_raise flag',
-                        target_name, buff_id)
+                    common.debugf('[REVIVE] %d is dead — 0x029 param %d is a rejected raise spell ID; setting pending_raise flag',
+                        server_id, buff_id)
                     common.set_pending_raise(server_id)
                 elseif STATUS_GAIN_MESSAGES[msg.message] or STATUS_LOSE_MESSAGES[msg.message] then
                     -- Target is alive and this is a status gain/loss message, so
                     -- param is a real status id. Any other 0x029 (synth results,
                     -- damage, misses...) is ignored above -- its param is unrelated
                     -- and would otherwise inject a phantom status.
-                    local buff_name = AshitaCore:GetResourceManager():GetString('buffs.names', buff_id)
-                    if not buff_name or buff_name == '' then
-                        buff_name = 'Buff#' .. buff_id
-                    end
-
                     if STATUS_LOSE_MESSAGES[msg.message] then
-                        common.debugf('%s lost the effect of %s (via 0x029).', target_name, buff_name)
                         -- handle_buff_removal no-ops on untracked ids, so no guard needed.
                         common.handle_buff_removal(server_id, buff_id)
                     else
-                        common.debugf('%s gained the effect of %s (via 0x029).', target_name, buff_name)
-
                         -- Base duration for timed expiry; 0x029 has no spell id, so
                         -- this resolves via song range / buff name only. It also
                         -- carries no caster, so source stays nil (no song eviction --
@@ -1345,8 +1320,7 @@ ashita.events.register('command', 'sidekick_command', function(e)
         common.printf('  Job: %s', job_def and job_def.job_name or 'Not loaded')
         common.printf('  Automation: %s', automation_enabled and 'Enabled' or 'Disabled')
         common.printf('  Focus Target: %s', addon_settings.focus_target or 'None')
-        common.printf('  Debug Mode: %s', common.debug and 'Enabled' or 'Disabled')
-        local tracked = common.get_tracked_targets()
+        common.printf('  Debug Mode: %s', common.debug and 'Enabled' or 'Disabled')        local tracked = common.get_tracked_targets()
         local tracked_names = {}
         for _, tt in pairs(tracked) do table.insert(tracked_names, tt.name) end
         if #tracked_names > 0 then

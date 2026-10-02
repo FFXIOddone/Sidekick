@@ -5,6 +5,7 @@
 
 local automation = {}
 local common = require('lib.core.common')
+local lang = require('lib.core.lang')
 
 
 -- Last command execution time
@@ -47,8 +48,8 @@ function automation.execute_command(command, description)
         if fallback then command = command:gsub('<bt>', tostring(bt.ServerId)) end
     end
 
-    -- Execute the command
-    AshitaCore:GetChatManager():QueueCommand(0, command)
+    -- Execute the command, in the client's language (lookups above key on English)
+    AshitaCore:GetChatManager():QueueCommand(0, lang.translate(command))
     last_command_time = current_time
     if ability then require('lib.core.action_core').clear_ready_stamp(ability) end
 
@@ -107,6 +108,7 @@ function automation.execute_priority_actions(priority_order, action_modules, set
         return false
     end
     common.built_commands = {}
+    lang.japanese = settings.japanese_client == true
 
     -- ----------------------------------------------------------------
     -- Stratagem follow-up: if a stratagem JA fired on the previous tick,

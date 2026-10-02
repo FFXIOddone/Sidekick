@@ -54,9 +54,17 @@ A focused, support-oriented addon for Ashita v4 that automates healing, buffing,
 The one exception is **opt-in leader following** (off by default): with **Follow** enabled, Sidekick will `/follow` a chosen party member or tracked target when they walk beyond a set distance. It never moves your character unless you turn this on. A second, narrower exception is the **opt-in send-pet-at-target toggle** in the **Pet Control** section (Puppetmaster/Summoner/Beastmaster, off by default): it sends the *pet*, not the player, and only at the mob you pick from the dropdown beside the toggle — either your own cursor target (`<t>`, and only while you're engaged) or the battle target (`<bt>`, whatever the party is already fighting).
 
 ## Latest Updates
-### [2.9.0] - 2026-10-01
+### [2.9.0] - 2026-09-30
+
+### Added
+- **Japanese client support**: tick **Japanese Client** in `/sk panel` and spells, abilities and items are sent under their Japanese names, with the **Gather Alert** in Japanese too. — **Jawn**, **アオ**
+
+### Changed
+- **Lighter on your frame rate**: Sidekick does far less work every frame, most noticeably with tracked/alliance targets or Follow on. — **Toots**, **Yunas**
+- **Quieter debug log**: `/sk debug` no longer prints a line for every buff gained or lost.
 
 ### Fixed
+- **Indi auras stay visible with Follow on**: Follow no longer rewrites other players' position packets, which blanked their Geo Indi auras.
 - **Perpetuance works under Light Arts**: it no longer waits for Addendum: White, and no longer holds back an Accession assigned to the same spell. — **Benthere**
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
@@ -79,7 +87,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 - **Buff Maintenance**: Auto-apply and maintain self-buffs with single-target party buff support
 - **Resource Recovery**: Automated MP and TP recovery abilities
 - **Automatic Resting**: MP-based jobs automatically rest when idle to recover MP, with a configurable delay timer and optional follow-target distance monitoring. Once resting, Sidekick takes no other action — the rest ends at full MP or when the follow target moves out of range
-- **Leader Following** (opt-in, off by default): `/follow` a chosen party member or tracked target when they move beyond a set distance. Healing and every other support action always take priority, and an autorun-cancel packet guard keeps `/follow` alive across the server's position syncs so it doesn't break mid-route. The only non-combat movement Sidekick performs.
+- **Leader Following** (opt-in, off by default): `/follow` a chosen party member or tracked target when they move beyond a set distance. Healing and every other support action always take priority. The only non-combat movement Sidekick performs.
 - **AFK Sleep** (on by default): Sleeps automation after a configurable period with no party movement and no combat, and wakes on your own movement. A runtime pause, not a stop — nothing is saved or reset, so your settings and automation state survive a sleep cycle.
 - **Hold AOE for Group** (opt-in, off by default): Holds area buffs (Protectra/Shellra/Bar, Diamondhide), Bard area songs, fresh Phantom Rolls, and Accession/Diffusion buffs (never heals) until every alive, in-zone party member is in range, so nobody misses the AOE. Trusts, dead members, and members in another zone never cause a hold. Checkbox in `/sk panel`.
 - **Corsair Rolls**: Keeps two chosen Phantom Rolls up and Double-Ups each one according to a **Risk Tier** (Lowest / Medium / Highest) built on the roll's lucky and unlucky numbers, backing off at 11 so it can't bust. **Snake Eye** is used for guaranteed finishes and **Fold** clears a Bust the moment it lands. Roll totals are read from the action packet, and the second roll is held back while Bust is active.
@@ -349,6 +357,7 @@ Sidekick/
 │   │   ├── afk.lua           # AFK Sleep dead-man's switch
 │   │   ├── automation.lua    # Action selection engine
 │   │   ├── common.lua        # Shared utilities
+│   │   ├── lang.lua          # Command language (names sent in the client's language)
 │   │   ├── parse_packets.lua # Packet parsing for casting state
 │   │   ├── roll_strategy.lua # Corsair Double-Up / Fold decision logic
 │   │   └── targets.lua       # Target-resolution helpers
@@ -439,8 +448,9 @@ you switch jobs. Delete the file to reset that character back to defaults.
 - `follow_enabled` (boolean): Enable opt-in leader following (`/follow` the follow target when far); off by default. Ignored while `multisend_follow` is on
 - `follow_distance` (number): Distance in yalms the follow target must exceed before `/follow` is sent (1-15, default 5)
 - `follow_target` (string): Character name to follow — a party member (P1-P5) or a session tracked target — shared by leader following and the resting distance check (optional)
+- `japanese_client` (boolean): Send spell, ability and item names, and the Hold AOE gather alert, in Japanese for a Japanese game client (**Japanese Client** checkbox in `/sk panel`); off by default
 - `hold_aoe_for_group` (boolean): Hold AOE casts (Protectra/Shellra/Bar, Diamondhide, area songs, fresh Phantom Rolls, Accession/Diffusion) until every alive, in-zone party member is in range (checkbox in `/sk panel`); off by default. While holding, sends `/p Gather together for <ability>` to the party, throttled to once every 5 seconds across all held abilities (opt-out with `hold_aoe_announce`)
-- `hold_aoe_announce` (boolean): Send the `/p Gather together for <ability>` party chat line while `hold_aoe_for_group` is holding a cast (**Gather Alert** checkbox in `/sk panel`); on by default. Turning it off holds silently — the hold itself is unchanged
+- `hold_aoe_announce` (boolean): Send the `/p Gather together for <ability>` party chat line (in Japanese with `japanese_client` on) while `hold_aoe_for_group` is holding a cast (**Gather Alert** checkbox in `/sk panel`); on by default. Turning it off holds silently — the hold itself is unchanged
 - `afk_enabled` (boolean): Enable AFK Sleep — pause automation after `afk_timeout` with no party movement and no combat, resume on your own movement (checkbox in `/sk panel`); on by default
 - `afk_timeout` (number): Seconds of no party movement and no combat before sleeping (60-3600, default 600). Stored in seconds; the `/sk panel` field shows minutes
 - `geo_enabled` (boolean): Enable geo management (Geo buffs, Geo debuffs, and Full Circle / luopan handling)

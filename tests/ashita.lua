@@ -30,6 +30,10 @@ local default_state = {
     target_index = 0,        -- current <t>
     commands = {},           -- every QueueCommand, oldest first
     strings = {},            -- [table] = { [id] = name } for GetResourceManager():GetString
+    -- [kind] = { [english name] = resource } for Get{Spell,Ability,Item}ByName (English langId 2 only)
+    resources = { spells = {}, abilities = {}, items = {} },
+    inventory = {},          -- [container] = list of { Id, Count }; GetContainerItem is 0-based
+    inventory_reads = 0,     -- GetContainerItem calls, so a test can see a container walk
 };
 
 function fake.reset()
@@ -213,8 +217,15 @@ end
 
 local function inventory()
     return {
-        GetContainerCountMax = function() return 0; end,
-        GetContainerItem = function() return { Id = 0, Count = 0 }; end,
+        GetContainerCountMax = function(_, c)
+            local items = fake.state.inventory[c];
+            return items and #items or 0;
+        end,
+        GetContainerItem = function(_, c, i)
+            fake.state.inventory_reads = fake.state.inventory_reads + 1;
+            local items = fake.state.inventory[c];
+            return items and items[i + 1] or { Id = 0, Count = 0 };
+        end,
         GetEquippedItem = function() return { Index = 0 }; end,
     };
 end
@@ -235,6 +246,9 @@ AshitaCore = {
             end,
             GetSpellById = function() return nil; end,
             GetItemById = function() return nil; end,
+            GetSpellByName = function(_, name, lang_id) return lang_id == 2 and fake.state.resources.spells[name] or nil; end,
+            GetAbilityByName = function(_, name, lang_id) return lang_id == 2 and fake.state.resources.abilities[name] or nil; end,
+            GetItemByName = function(_, name, lang_id) return lang_id == 2 and fake.state.resources.items[name] or nil; end,
         };
     end,
     GetChatManager = function()
@@ -266,6 +280,10 @@ end
 package.preload['imgui'] = function()
     return setmetatable({}, { __index = function() return function() return false; end; end });
 end
+
+-- get_bt calls into FFXiMain through an ffi function pointer; the fake's is address 1,
+-- a crash no pcall can catch. refresh_game_state samples <bt> movement, so stub it.
+require('lib.core.targets').get_bt = function() return nil; end
 
 fake.reset();
 return fake;

@@ -1,7 +1,6 @@
 --[[
     Follow action
-    /follow the configured leader when they walk beyond follow_distance. The
-    0x0D packet guard in Sidekick.lua keeps /follow alive across position syncs.
+    /follow the configured leader when they walk beyond follow_distance.
     Wired low in priority (above rest) so support actions preempt following.
 ]]--
 

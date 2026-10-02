@@ -15,8 +15,9 @@ make check              # both; CI runs the same on Ubuntu and Windows
 
 `tests/ashita.lua` is a fake Ashita client. It defines the globals the game injects
 (`T{}`, `AshitaCore`, `ashita`, `GetEntity`, `GetPlayerEntity`, `struct`, `addon`) and the
-`chat`, `settings` and `imgui` modules, so the real `lib/` modules load unchanged. Every
-read comes from `fake.state`:
+`chat`, `settings` and `imgui` modules, so the real `lib/` modules load unchanged. It
+also stubs `targets.get_bt`, whose ffi call crashes against the fake. Every read comes
+from `fake.state`:
 
 | Field | What it feeds |
 |---|---|
@@ -26,6 +27,8 @@ read comes from `fake.state`:
 | `ability_recasts[recast_id]` | the 32-slot ability recast list |
 | `entities[target_index]` | tables from `fake.entity{...}` |
 | `commands` | everything sent through `QueueCommand` |
+| `inventory[container]` | list of `{ Id, Count }`; `GetContainerItem` slot `i` is `[i + 1]` |
+| `inventory_reads` | count of `GetContainerItem` calls, to see a container walk |
 
 A test edits that table and calls `fake.reset()` between cases.
 
@@ -40,6 +43,14 @@ A test edits that table and calls `fake.reset()` between cases.
 - `action_core_test.lua` drives `action_core.is_usable` through the fake client.
 - `stratagem_test.lua` drives `common.check_stratagem` with the real Scholar job file: which
   stratagem fires next for a spell under each Arts stance.
+- `snapshot_test.lua` pins every field of a party and an alliance member snapshot, the
+  fallback when a party-manager read throws, the `/anon` patch-up, and the 0.1 s
+  `refresh_game_state_if_stale` guard.
+- `inventory_test.lua` holds `count_equippable_items` to one container walk per spec per
+  0.5 s.
+- `tracked_targets_test.lua` counts entity-slot reads per `refresh_game_state()`: a
+  tracked target is read at its cached index, and misses share one rescan at most once
+  a second.
 
 ## Adding a test
 
