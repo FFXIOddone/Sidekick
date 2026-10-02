@@ -716,12 +716,14 @@ local function area_storm_dedicated(job_def, settings, party_buff_config)
     return dedicated
 end
 
--- True when self or an in-range, non-dedicated party member lacks the area storm.
--- Out-of-range members never vote, so a straggler can't burn a charge per recast.
--- Trusts never vote either, as in area_needs_recast: their packet-tracked lists
--- miss landings, and one stale "missing" re-fires Accession every recast. Self
--- drives the timing and the same cast covers every Trust in range.
-local function area_storm_missing(ability, dedicated, state)
+-- True when self or a non-dedicated party member lacks the area storm.
+-- Out-of-range members only vote with Hold AOE for Group on (any_range): there
+-- their vote makes the caller hold and call a gather, never cast. Without it a
+-- straggler would burn a charge per recast on a storm that can't reach them.
+-- Trusts never vote, as in area_needs_recast: their packet-tracked lists miss
+-- landings, and one stale "missing" re-fires Accession every recast. Self drives
+-- the timing and the same cast covers every Trust in range.
+local function area_storm_missing(ability, dedicated, state, any_range)
     if not dedicated[0] and action_core.needs_buff(state.player.buffs, ability.buff_id) then
         return true
     end
@@ -730,8 +732,9 @@ local function area_storm_missing(ability, dedicated, state)
         local m = state.party[i]
         if m and not dedicated[i] and not m.is_trust and m.hpp and m.hpp > 0
            and common.get_party_member_zone(i) == pz
-           and m.target_index and m.target_index > 0
-           and common.can_be_helped(m.target_index, common.AOE_RADIUS)
+           and (any_range and not state.charmed[m.target_index]
+                or (m.target_index and m.target_index > 0
+                    and common.can_be_helped(m.target_index, common.AOE_RADIUS)))
            and action_core.needs_buff(m.buffs or {}, ability.buff_id) then
             return true
         end
@@ -754,7 +757,7 @@ local function area_precast_step(ability, job_def, settings, party_buff_config, 
 
     local accession_up = action_core.has_any_buff(buffs, strat.buff_id)
     local dedicated = area_storm_dedicated(job_def, settings, party_buff_config)
-    if not accession_up and not area_storm_missing(ability, dedicated, state) then
+    if not accession_up and not area_storm_missing(ability, dedicated, state, settings.hold_aoe_for_group) then
         return nil
     end
 
