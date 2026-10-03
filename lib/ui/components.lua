@@ -638,7 +638,32 @@ local function toggle_party_buff(ctx, ability_name, party_index, enabled)
     -- Check if this is a song that counts toward the limit
     if enabled then
         local ability = find_ability_by_name(ctx.job_def, ability_name)
-        
+
+        -- One storm per target (the server cancels any other): turning a target on
+        -- for one area_precast row turns it off on the others. Covers 'A' too, so
+        -- only one storm holds the area cast. Grouped rows already share one key.
+        if ability and ability.area_precast then
+            for _, a in ipairs(ctx.job_def.abilities.buff or {}) do
+                local t = a.area_precast and a.name ~= ability_name and ctx.party_buffs[a.name]
+                if t and t[party_index] == true then
+                    t[party_index] = false
+                    if is_persisted_target_key(party_index) then
+                        ctx.settings.party_buffs = ctx.settings.party_buffs or {}
+                        ctx.settings.party_buffs[a.name] = ctx.settings.party_buffs[a.name] or {}
+                        ctx.settings.party_buffs[a.name][party_index] = false
+                    end
+                    -- Same as the song path below: a row left with no button is disabled.
+                    local any_on = false
+                    for _, v in pairs(t) do
+                        if v == true then any_on = true break end
+                    end
+                    if not any_on then
+                        ctx.settings['disabled_' .. a.name:gsub(' ', '_')] = true
+                    end
+                end
+            end
+        end
+
         if ability and ability.magic == 'song' then
             -- Determine the limit based on main/sub job
             local is_main_job = ability.is_main_job ~= false
@@ -890,11 +915,11 @@ local function render_scholar_stratagem_button(ability_key, ability, ctx)
         return false, 0
     end
 
-    -- Bard songs get the area [A] button in the leading slot (drawn by
-    -- render_party_buttons), so it already provides the indent. Adding a
-    -- stratagem spacer here too would double-indent the row. Either the [A]
-    -- button or the S button triggers the indent, never both.
-    if ability and ability.magic == 'song' then
+    -- Bard songs and area_precast rows (SCH storms) get the area [A] button in
+    -- the leading slot (drawn by render_party_buttons), so it already provides
+    -- the indent. Adding a stratagem spacer here too would double-indent the row.
+    -- Either the [A] button or the S button triggers the indent, never both.
+    if ability and (ability.magic == 'song' or ability.area_precast) then
         return false, 0
     end
 
@@ -1281,10 +1306,10 @@ end
 -- row reads [E][S] on an enhancing row, [ ][S] on a Cure row.
 --
 -- A column collapses entirely when its job isn't in play; a row that misses one gets a
--- spacer instead so rows stay aligned. Song rows are the exception -- no column applies
--- to them and render_party_buttons draws the [A] button in this slot.
+-- spacer instead so rows stay aligned. Song and area_precast rows are the exception --
+-- no column applies to them and render_party_buttons draws the [A] button in this slot.
 local function render_leading_slot(ability_key, ability, ctx)
-    if ability and ability.magic == 'song' then return end
+    if ability and (ability.magic == 'song' or ability.area_precast) then return end
 
     -- Geo-bt debuffs sit in their own section, with no button columns to align with.
     local no_spacer = ability and ability.group == 'Geo-bt'
@@ -1312,10 +1337,10 @@ local function render_leading_slot(ability_key, ability, ctx)
 
     -- Nothing drew in the scholar column: the S button declined the row outright (no
     -- SCH, no arts stance, or no stratagem matches) rather than spacering it. A live
-    -- shared column, or a bard [A] column, still needs this row indented.
-    local has_songs = ctx and ctx.job_def and ctx.job_def.has_songs
+    -- shared column, or an [A] column (bard songs, SCH storms), still needs this row indented.
+    local has_area_column = ctx and ctx.job_def and ctx.job_def.has_area_column
     if not drew and not no_spacer
-        and (has_songs
+        and (has_area_column
             or nether_void_column_strat(ctx) or diffusion_column_strat(ctx)
             or enlightenment_column_strat(ctx)
             or (not own_column and embolden_column_strat(ctx))) then
@@ -1368,7 +1393,16 @@ local function render_party_buttons(ctx, key_name, has_spell, ability, is_group,
     -- gets the song. Sits in the leading slot (like the Scholar S button on other
     -- jobs). Needs no Pianissimo, so it stays usable below Pianissimo's level.
     -- Every bard song gets it (Mazurka has no Pianissimo but is always area).
-    if ability and ability.magic == 'song' then
+    -- area_precast rows (SCH storms) get it too: Accession, then the spell on self --
+    -- hidden (a spacer keeps the row aligned) outside the JA's stance (Accession:
+    -- Light Arts / Addendum: White), where buff.lua skips the area pass and
+    -- single-target storms still go out.
+    local area_strat = ability and common.precast_by_name(ctx.job_def, ability.area_precast)
+    local player = common.game_state.player
+    if ability and ability.area_precast
+        and not (area_strat and action_core.has_any_buff(player and player.buffs, area_strat.requires_buff)) then
+        render_slot_spacer()
+    elseif ability and (ability.magic == 'song' or ability.area_precast) then
         local a_enabled = is_group and is_group_party_buff_enabled(ctx, key_name, 'A')
             or is_party_buff_enabled(ctx, key_name, 'A')
 
@@ -1397,7 +1431,9 @@ local function render_party_buttons(ctx, key_name, has_spell, ability, is_group,
         end
 
         if imgui.IsItemHovered() then
-            ui_components.set_tooltip('Area: sing without Pianissimo so everyone in range gets it.\nRecast tracks party members not given a specific ME/P button.')
+            ui_components.set_tooltip(ability.area_precast
+                and 'Area: Accession, then cast on yourself so everyone in range gets it.\nCast before any single-target storm; no storms while Accession is unavailable.'
+                or 'Area: sing without Pianissimo so everyone in range gets it.\nRecast tracks party members not given a specific ME/P button.')
         end
 
         if not has_spell then

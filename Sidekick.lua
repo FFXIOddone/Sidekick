@@ -354,12 +354,15 @@ local function load_job_definition(main_job_id, sub_job_id)
     local sub_abilities = sub_def and sub_def.abilities or {}
     merged_def.abilities = merge_abilities(main_abilities, sub_abilities, main_def, sub_def)
 
-    -- Flag whether this job (main or sub) has song magic. The buff UI shows the
-    -- bard [A] area column when it does, and every non-song row indents under it.
+    -- Flag whether this job has an [A] area column: song magic (main or sub) or an
+    -- area_precast row (SCH storms -- main job only, a SCH sub never reaches their
+    -- level). The buff UI shows the column and every other row indents under it.
     for _, list in pairs(merged_def.abilities) do
         if type(list) == 'table' then
             for _, ab in ipairs(list) do
-                if ab.magic == 'song' then merged_def.has_songs = true end
+                if ab.magic == 'song' or (ab.area_precast and ab.is_main_job ~= false) then
+                    merged_def.has_area_column = true
+                end
             end
         end
     end
@@ -527,6 +530,20 @@ local function setup_job()
         
         -- Drop stratagems assigned on a higher-level SCH that this job/level can't use
         if common.prune_unavailable_stratagems(job_def, addon_settings) then
+            settings.save()
+        end
+
+        -- Storms were self-only checkbox rows, on unless switched off; they now need a
+        -- target button. Carry that default over once: ME on the grouped storm row.
+        -- ponytail: grouped only -- ungrouped, every storm read as on, so pick one by hand.
+        local pb = addon_settings.party_buffs
+        if main_job_id == 20 and not (pb and pb.storm)
+           and addon_settings.disabled_group_storm ~= true and addon_settings.ungrouped_storm ~= true then
+            addon_settings.party_buffs = pb or T{}
+            addon_settings.party_buffs.storm = T{ [0] = true }
+            -- The config window copies settings.party_buffs only while its own copy is empty.
+            local live = ui_config.get_party_buffs()
+            if next(live) ~= nil and live.storm == nil then live.storm = { [0] = true } end
             settings.save()
         end
 
