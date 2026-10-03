@@ -175,9 +175,10 @@ test('cost matches the spell_list MP cost', function()
     assert_eq(sorted(problems), {});
 end);
 
+local by_name = {};
+for _, row in pairs(abilities) do by_name[row.name] = row; end
+
 test('recast_id is the abilities.sql recastId of the ability the command uses', function()
-    local by_name = {};
-    for _, row in pairs(abilities) do by_name[row.name] = row; end
     local problems = {};
     each_ability(function(a, where)
         local kind, name = command_parts(a);
@@ -203,6 +204,38 @@ test('ability_id is the abilities.sql abilityId of the ability the command uses'
                 table.insert(problems, ('%s: ability_id %d is not in abilities.sql'):format(where, a.ability_id));
             elseif row.name ~= name then
                 table.insert(problems, ('%s: ability_id %d is %s, command uses %s'):format(where, a.ability_id, row.name, name));
+            end
+        end
+    end);
+    assert_eq(sorted(problems), {});
+end);
+
+-- abilities.sql addType bits the server tests in charutils::CheckAbilityAddtype. Each
+-- passes under the Arts stance or its Addendum, so a job file gating on one of the two
+-- leaves the ability dead under the other.
+local ARTS_STANCES = {
+    { bit = 16, name = 'Light Arts', buffs = { 358, 401 } },
+    { bit = 32, name = 'Dark Arts', buffs = { 359, 402 } },
+};
+
+test('an Arts-gated ability accepts every stance the server accepts', function()
+    local problems = {};
+    each_ability(function(a, where)
+        local kind, name = command_parts(a);
+        local row = kind == 'ja' and by_name[name];
+        if not row then return; end
+        -- The ability's own buff counts: Addendum: White needs no gate for the stance
+        -- it grants, because under it the buff is already up.
+        local accepted = {};
+        for _, id in ipairs(ids_of(a.requires_buff)) do accepted[id] = true; end
+        for _, id in ipairs(ids_of(a.buff_id)) do accepted[id] = true; end
+        for _, stance in ipairs(ARTS_STANCES) do
+            if bit.band(row.add_type, stance.bit) ~= 0 then
+                for _, id in ipairs(stance.buffs) do
+                    if not accepted[id] then
+                        table.insert(problems, ('%s: server allows it under %s, requires_buff lacks %d'):format(where, stance.name, id));
+                    end
+                end
             end
         end
     end);

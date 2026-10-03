@@ -848,7 +848,7 @@ return {
                 cost = 0,
                 recast_id = 231,
                 command = '/ja "Perpetuance" <me>',
-                requires_buff = 401,  -- Addendum: White
+                requires_buff = {358, 401},  -- Can be either 358 or 401
                 buff_id = 469,
                 magic = 'white',
                 magic_types = { 'enhancing' },

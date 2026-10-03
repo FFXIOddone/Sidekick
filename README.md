@@ -68,6 +68,7 @@ The one exception is **opt-in leader following** (off by default): with **Follow
 
 ### Fixed
 - **Indi auras stay visible with Follow on**: Follow no longer rewrites other players' position packets, which blanked their Geo Indi auras.
+- **Perpetuance works under Light Arts**: it no longer waits for Addendum: White, and no longer holds back an Accession assigned to the same spell. — **Benthere**
 
 See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
