@@ -32,6 +32,7 @@ local LIGHT_YELLOW = { 1.0, 1.0, 0.7, 1.0 }
 local LIGHT_GREEN = { 0.7, 1.0, 0.7, 1.0 }
 local LIGHT_BLUE = { 0.7, 0.7, 1.0, 1.0 }
 local LIGHT_GRAY = { 0.5, 0.5, 0.5, 1.0 }
+local MIDNIGHT_NAME_COLOR = { 0.098, 0.858, 1.0, 1.0 }
 
 -- Color Constants - Buttons
 local COLOR_BUTTON_DISABLED = { 0.2, 0.2, 0.2, 1.0 }
@@ -43,6 +44,20 @@ local COLOR_BUTTON_UNSELECTED_ACTIVE = { 0.5, 0.5, 0.5, 1.0 }
 local HEADER_COLOR_NORMAL = { 0.2, 0.2, 0.2, 0.31 }
 local HEADER_COLOR_HOVERED = { 0.2, 0.2, 0.2, 0.45 }
 local HEADER_COLOR_ACTIVE = { 0.2, 0.2, 0.2, 0.65 }
+local MIDNIGHT_HEADER_COLOR_NORMAL = { 0.059, 0.541, 0.862, 0.18 }
+local MIDNIGHT_HEADER_COLOR_HOVERED = { 0.059, 0.541, 0.862, 0.34 }
+local MIDNIGHT_HEADER_COLOR_ACTIVE = { 0.059, 0.541, 0.862, 0.50 }
+local MIDNIGHT_ACCENT_COLOR = { 0.059, 0.541, 0.862, 1.0 }
+
+function ui_components.get_ui_skin(settings)
+    return settings and settings.ui_skin == 'midnight' and 'midnight' or 'original'
+end
+
+function ui_components.set_ui_skin(settings, skin)
+    if not settings or (skin ~= 'original' and skin ~= 'midnight') then return false end
+    settings.ui_skin = skin
+    return true
+end
 
 -- User-set accents are optional; an absent or malformed value preserves the
 -- current ImGui theme and the original section-header colors.
@@ -63,6 +78,24 @@ end
 
 function ui_components.get_ui_accent_color(settings)
     return settings and normalize_rgba(settings.ui_accent_color) or nil
+end
+
+function ui_components.get_default_ui_accent_color(settings)
+    if ui_components.get_ui_skin(settings) == 'midnight' then
+        return MIDNIGHT_ACCENT_COLOR
+    end
+    return LIGHT_BLUE
+end
+
+function ui_components.get_ui_header_colors(settings)
+    local accent = ui_components.get_ui_accent_color(settings)
+    if accent then
+        return accent_with_alpha(accent, 0.18), accent_with_alpha(accent, 0.36), accent_with_alpha(accent, 0.54)
+    end
+    if ui_components.get_ui_skin(settings) == 'midnight' then
+        return MIDNIGHT_HEADER_COLOR_NORMAL, MIDNIGHT_HEADER_COLOR_HOVERED, MIDNIGHT_HEADER_COLOR_ACTIVE
+    end
+    return HEADER_COLOR_NORMAL, HEADER_COLOR_HOVERED, HEADER_COLOR_ACTIVE
 end
 
 function ui_components.set_ui_accent_color(settings, color)
@@ -102,6 +135,68 @@ end
 function ui_components.pop_ui_accent(color_count)
     if color_count and color_count > 0 then
         imgui.PopStyleColor(color_count)
+    end
+end
+
+-- Midnight restores #269's full charcoal/blue palette and layout. A custom
+-- accent is pushed afterwards, so it overrides matching highlights while
+-- preserving the selected skin's surfaces and semantic row colors.
+function ui_components.push_ui_skin(settings)
+    if ui_components.get_ui_skin(settings) ~= 'midnight' then
+        return { color_count = 0, style_var_count = 0 }
+    end
+
+    local colors = {
+        { ImGuiCol_WindowBg, { 0.063, 0.067, 0.067, 0.97 } },
+        { ImGuiCol_ChildBg, { 0.039, 0.043, 0.043, 0.75 } },
+        { ImGuiCol_Header, MIDNIGHT_HEADER_COLOR_NORMAL },
+        { ImGuiCol_HeaderHovered, MIDNIGHT_HEADER_COLOR_HOVERED },
+        { ImGuiCol_HeaderActive, MIDNIGHT_HEADER_COLOR_ACTIVE },
+        { ImGuiCol_TitleBg, { 0.039, 0.043, 0.043, 1.0 } },
+        { ImGuiCol_TitleBgActive, { 0.059, 0.22, 0.32, 1.0 } },
+        { ImGuiCol_TitleBgCollapsed, { 0.039, 0.043, 0.043, 1.0 } },
+        { ImGuiCol_Border, { 0.059, 0.541, 0.862, 0.72 } },
+        { ImGuiCol_Text, { 0.933, 0.914, 0.863, 1.0 } },
+        { ImGuiCol_FrameBg, { 0.094, 0.102, 0.102, 1.0 } },
+        { ImGuiCol_Button, { 0.059, 0.541, 0.862, 0.22 } },
+        { ImGuiCol_ButtonHovered, { 0.059, 0.541, 0.862, 0.50 } },
+        { ImGuiCol_ButtonActive, { 0.059, 0.541, 0.862, 0.75 } },
+        { ImGuiCol_Tab, { 0.059, 0.541, 0.862, 0.22 } },
+        { ImGuiCol_TabHovered, { 0.059, 0.541, 0.862, 0.50 } },
+        { ImGuiCol_TabActive, { 0.059, 0.541, 0.862, 0.75 } },
+        { ImGuiCol_TabUnfocused, { 0.059, 0.541, 0.862, 0.18 } },
+        { ImGuiCol_TabUnfocusedActive, { 0.059, 0.541, 0.862, 0.50 } },
+        { ImGuiCol_CheckMark, MIDNIGHT_NAME_COLOR },
+        { ImGuiCol_SliderGrab, { 0.059, 0.541, 0.862, 1.0 } },
+        { ImGuiCol_SliderGrabActive, MIDNIGHT_NAME_COLOR },
+        { ImGuiCol_ScrollbarBg, { 0.039, 0.043, 0.043, 0.82 } },
+        { ImGuiCol_ScrollbarGrab, { 0.059, 0.541, 0.862, 0.40 } },
+        { ImGuiCol_ScrollbarGrabHovered, { 0.059, 0.541, 0.862, 0.68 } },
+        { ImGuiCol_ScrollbarGrabActive, MIDNIGHT_NAME_COLOR },
+    }
+    for _, entry in ipairs(colors) do imgui.PushStyleColor(entry[1], entry[2]) end
+
+    imgui.PushStyleVar(ImGuiStyleVar_WindowRounding, 10)
+    imgui.PushStyleVar(ImGuiStyleVar_FrameRounding, 5)
+    imgui.PushStyleVar(ImGuiStyleVar_WindowPadding, { 14, 12 })
+    imgui.PushStyleVar(ImGuiStyleVar_ItemSpacing, { 8, 6 })
+    return { color_count = #colors, style_var_count = 4 }
+end
+
+function ui_components.push_ui_theme(settings)
+    local scope = ui_components.push_ui_skin(settings)
+    scope.accent_color_count = ui_components.push_ui_accent(settings)
+    return scope
+end
+
+function ui_components.pop_ui_theme(scope)
+    if not scope then return end
+    ui_components.pop_ui_accent(scope.accent_color_count)
+    if scope.style_var_count and scope.style_var_count > 0 then
+        imgui.PopStyleVar(scope.style_var_count)
+    end
+    if scope.color_count and scope.color_count > 0 then
+        imgui.PopStyleColor(scope.color_count)
     end
 end
 
@@ -2512,10 +2607,10 @@ local function begin_header_section(ctx, label, setting_name, default_value, too
         end
     end
     imgui.SameLine()
-    local accent = ui_components.get_ui_accent_color(ctx.settings)
-    imgui.PushStyleColor(ImGuiCol_Header, accent and accent_with_alpha(accent, 0.18) or HEADER_COLOR_NORMAL)
-    imgui.PushStyleColor(ImGuiCol_HeaderHovered, accent and accent_with_alpha(accent, 0.36) or HEADER_COLOR_HOVERED)
-    imgui.PushStyleColor(ImGuiCol_HeaderActive, accent and accent_with_alpha(accent, 0.54) or HEADER_COLOR_ACTIVE)
+    local header_normal, header_hovered, header_active = ui_components.get_ui_header_colors(ctx.settings)
+    imgui.PushStyleColor(ImGuiCol_Header, header_normal)
+    imgui.PushStyleColor(ImGuiCol_HeaderHovered, header_hovered)
+    imgui.PushStyleColor(ImGuiCol_HeaderActive, header_active)
     local is_open = imgui.CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)
     imgui.PopStyleColor(3)
     ui_components.item_tooltip(tooltip)

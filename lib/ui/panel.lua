@@ -599,7 +599,16 @@ function panel.render(addon_settings, save_settings)
 
             imgui.Separator()
             imgui.Text('UI Theme')
-            local accent = components.get_ui_accent_color(addon_settings) or components.LIGHT_BLUE
+            local midnight_skin = { components.get_ui_skin(addon_settings) == 'midnight' }
+            if imgui.Checkbox('Midnight Skin', midnight_skin) then
+                components.set_ui_skin(addon_settings, midnight_skin[1] and 'midnight' or 'original')
+                if save_settings then save_settings() end
+            end
+            if imgui.IsItemHovered() then
+                imgui.SetTooltip('Applies the original charcoal/blue #269 palette and layout to the configuration and widget windows. Off keeps the current appearance.')
+            end
+            local accent = components.get_ui_accent_color(addon_settings)
+                or components.get_default_ui_accent_color(addon_settings)
             local accent_edit = { accent[1], accent[2], accent[3], accent[4] }
             if imgui.ColorEdit4('UI Accent Color', accent_edit, ImGuiColorEditFlags_NoInputs) then
                 if components.set_ui_accent_color(addon_settings, accent_edit) and save_settings then
@@ -607,10 +616,10 @@ function panel.render(addon_settings, save_settings)
                 end
             end
             if imgui.IsItemHovered() then
-                imgui.SetTooltip('Colors section headers, tabs, buttons, check marks, and sliders in the configuration and widget windows. No saved choice preserves the existing UI colors.')
+                imgui.SetTooltip('Overrides the selected skin’s header, tab, button, check mark, and slider accent colors. A reset restores the selected skin’s accents.')
             end
             imgui.SameLine()
-            if imgui.Button('Default UI Colors') then
+            if imgui.Button('Reset UI Accent') then
                 addon_settings.ui_accent_color = nil
                 if save_settings then save_settings() end
             end
