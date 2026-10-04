@@ -55,6 +55,34 @@ test('HPP snapshots preserve read validity separately from the zero fallback', f
     p = common.game_state.player;
     assert_eq({ p.hpp, p.hpp_valid }, { 0, true }, 'actual zero remains a valid dead-state reading');
 end);
+test('member HPP accepts only percentages from zero through one hundred', function()
+    for _, value in ipairs({ -1, 101, 0, 55, math.huge, -math.huge }) do
+        setup();
+        fake.state.party[0].hp_pct = value;
+        fake.state.party[6].hp_pct = value;
+        common.refresh_game_state();
+        local valid = value >= 0 and value <= 100;
+        local expected = valid and value or 0;
+        local p = common.game_state.player;
+        local a = common.game_state.alliance[2][0];
+        assert_eq({ p.hpp, p.hpp_valid, a.hpp, a.hpp_valid },
+                  { expected, valid, expected, valid });
+    end
+    for _, value in ipairs({ 'nil', 'nan' }) do
+        setup();
+        if value == 'nil' then
+            fake.state.party[0].hp_pct_read = value;
+            fake.state.party[6].hp_pct_read = value;
+        else
+            fake.state.party[0].hp_pct = 0 / 0;
+            fake.state.party[6].hp_pct = 0 / 0;
+        end
+        common.refresh_game_state();
+        local p = common.game_state.player;
+        local a = common.game_state.alliance[2][0];
+        assert_eq({ p.hpp, p.hpp_valid, a.hpp, a.hpp_valid }, { 0, false, 0, false });
+    end
+end);
 test('an /anon player row takes job and level from the Player struct', function()
     setup();
     local row = fake.state.party[0];

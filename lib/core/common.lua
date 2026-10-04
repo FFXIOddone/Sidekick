@@ -3596,7 +3596,7 @@ local function build_member_snapshot(pm, entity_mgr, flat_index)
     local hpp, hpp_valid = safe_call(0, pm.GetMemberHPPercent, pm, flat_index)
     hpp = tonumber(hpp)
     hpp_valid = hpp_valid and hpp ~= nil and hpp == hpp
-        and hpp ~= math.huge and hpp ~= -math.huge
+        and hpp ~= math.huge and hpp ~= -math.huge and hpp >= 0 and hpp <= 100
     if not hpp_valid then hpp = 0 end
     local mp  = safe_call(0, pm.GetMemberMP,         pm, flat_index)
     local mpp = safe_call(0, pm.GetMemberMPPercent,  pm, flat_index)
@@ -3848,7 +3848,7 @@ function common.refresh_game_state()
         if entity and entity.TargetIndex and entity.TargetIndex > 0 then
             local hpp = tonumber(entity.HPPercent)
             local hpp_valid = hpp ~= nil and hpp == hpp
-                and hpp ~= math.huge and hpp ~= -math.huge
+                and hpp ~= math.huge and hpp ~= -math.huge and hpp >= 0 and hpp <= 100
             if not hpp_valid then hpp = 0 end
 
             -- Position
